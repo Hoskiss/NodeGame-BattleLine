@@ -15,41 +15,50 @@ var Card = function(card_id) {
         }
     };
 
-    this.isSoldierCard = function(card_id) {
-        var COLOR_LIST = ['Red', 'Orange', 'Yellow',
-                          'Green', 'Blue', 'Purple'];
-        return (COLOR_LIST.indexOf(card_id.match(/^[a-z]+/i)[0]));
-    };
-
     this.init();
 }
 
-var CardCategory = function() {
-    var CARD_CATEGORY_MAP = {
-        "STRAIGHT_FLUSH_CATEGORY": 5,
-        "THREE_OF_A_KIND_CATEGORY": 4,
-        "FLUSH_CATEGORY": 3,
-        "STRAIGHT_CATEGORY": 2,
-        "ANY_OTHER_CATEGORY": 1
+Card.prototype = {
+    isSoldierCard: function(card_id) {
+        var COLOR_LIST = ['Red', 'Orange', 'Yellow',
+                          'Green', 'Blue', 'Purple'];
+        return (COLOR_LIST.indexOf(card_id.match(/^[a-z]+/i)[0]));
     }
+}
 
-    this.init = function(line_cards_info, category) {
-        this.category = (typeof category === "undefined") ? "ANY_OTHER_CATEGORY" : category;
+var CardCategory = function(line_cards_info, category) {
+
+    this.init = function() {
+        this.category = (typeof category === "undefined") ?
+                        "ANY_OTHER_CATEGORY" : category;
         // should be a list has at least 3 cards info
         // where card_info = (str(color), int(num))
         this.line_cards_info = line_cards_info;
         this.complete_first_or_second = 1;
     };
 
-    this.lessThan = function(other) {
+    this.init();
+}
+
+CardCategory.prototype = {
+    CARD_CATEGORY_MAP: {
+        "STRAIGHT_FLUSH_CATEGORY": 5,
+        "THREE_OF_A_KIND_CATEGORY": 4,
+        "FLUSH_CATEGORY": 3,
+        "STRAIGHT_CATEGORY": 2,
+        "ANY_OTHER_CATEGORY": 1
+    },
+
+    lessThan: function(other) {
         if (this.category !== other.category) {
-            return CARD_CATEGORY_MAP[this.category] < CARD_CATEGORY_MAP[other.category];
+            return (this.CARD_CATEGORY_MAP[this.category] <
+                    this.CARD_CATEGORY_MAP[other.category]);
         }
         else {
             var self_total_num_sum = 0;
             var other_total_num_sum = 0;
 
-            self.line_cards_info.forEach(function(each_info) {
+            this.line_cards_info.forEach(function(each_info) {
                 self_total_num_sum += each_info[1];
             });
             other.line_cards_info.forEach(function(each_info) {
@@ -60,10 +69,10 @@ var CardCategory = function() {
                 return self_total_num_sum < other_total_num_sum;
             }
             else {
-                return self.complete_first_or_second > other.complete_first_or_second;
+                return this.complete_first_or_second > other.complete_first_or_second;
             }
         }
-    };
+    }
 }
 
 

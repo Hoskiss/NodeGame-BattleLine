@@ -12,8 +12,15 @@ function HBattleLineServer() {
         tses_uuid_map = new hashes.HashTable();
     var UUID = require('node-uuid');
 
-    var Card = require('./Card');
-    cc = new Card('abc-dajs-232');
+    var c_m = require('./HCardsManager');
+    // c1 = new c_m.CardCategory([["aa", 1], ["aa", 2], ["aa", 90] ]);
+    // c2 = new c_m.CardCategory([["bb", 10], ["bb", 20], ["bb", 90] ]);
+    // console.log(c1.lessThan(c2));
+
+    // c1 = new c_m.Card("dsa-fas-4232");
+    // c2 = new c_m.Card("dsa-fas-5631");
+
+
 
     var GAME_PORT = 8009;
 
