@@ -1,0 +1,14 @@
+{
+    "name": "NodeGame-BattleLine",
+    "description": "Node + Cocos2d Game BattleLine",
+    "version": "0.0.1",
+    "private": true,
+    "dependencies": {
+        "connect": "*",
+        "cookie": "*",
+        "express": "3.x",
+        "hashes": "*",
+        "node-uuid": "*",
+        "socket.io": "*"
+    }
+}
