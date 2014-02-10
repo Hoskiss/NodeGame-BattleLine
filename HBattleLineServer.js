@@ -2,17 +2,27 @@ function HBattleLineServer() {
 
     var express = require('express'),
         app = express();
+        // Create a new store in memory for the Express sessions
+    var sessionStore = new express.session.MemoryStore();
 
-    var io = require('socket.io'),
-        http = require('http');
-        cookie = require("cookie"),
-        connect = require("connect");
+    // We define the key of the cookie containing the Express SID
+    var EXPRESS_SID_KEY = 'express.sid';
+    // We define a secret string used to crypt the cookies sent by Express
+    var COOKIE_SECRET = 'my battleline secret';
+    var cookieParser = express.cookieParser(COOKIE_SECRET);
+
+    var io = require('socket.io');
+    var http = require('http');
+        //cookie = require("cookie"),
+        //connect = require("connect");
+    //var parseCookie = require('cookie').parse;
+
 
     var hashes = require('hashes'),
         tses_uuid_map = new hashes.HashTable();
     var UUID = require('node-uuid');
 
-    var c_m = require('./HCardsManager');
+    // var c_m = require('./HCardsManager');
     // c1 = new c_m.CardCategory([["aa", 1], ["aa", 2], ["aa", 90] ]);
     // c2 = new c_m.CardCategory([["bb", 10], ["bb", 20], ["bb", 90] ]);
     // console.log(c1.lessThan(c2));
@@ -24,14 +34,20 @@ function HBattleLineServer() {
 
     var GAME_PORT = 8009;
 
+
+
     this.init = function() {
         this.game_start = false;
 
 
         this.configureExpress();
         this.configureSocketIO();
+        console.log("!!!BBB");
 
         io.sockets.on("connection", this.onSocketConnected);
+        this.server.listen(GAME_PORT, function(){
+            console.log('Express/SocketIO server on localhost :' + app.get('port'));
+        });
     };
 
     this.configureExpress = function() {
@@ -45,10 +61,17 @@ function HBattleLineServer() {
             // app.use('/res', express.static(__dirname + '/res') );
             // app.use('/external', express.static(__dirname + '/external') );
             // app.use('/src', express.static(__dirname + '/src') );
-            app.use(express.cookieParser());
-            app.use(express.session({ secret: 'mySuperSecret',
-                                      key: 'express.sid' }));
-            // app.use(express.bodyParser());
+            //app.use(express.bodyParser());
+            //app.use(express.cookieParser(COOKIE_SECRET));
+            app.use(express.cookieParser);
+            app.use(express.session({
+                store: sessionStore,
+                cookie: {
+                    httpOnly: true
+                },
+                key: EXPRESS_SID_KEY
+
+            }));
 
             app.get('/', function(req, res){
                 res.sendfile('index.html');
@@ -58,40 +81,69 @@ function HBattleLineServer() {
     };
 
     this.configureSocketIO = function() {
-        var server = http.createServer(app);
-        io = io.listen( server.listen(app.get('port'), function(){
-            console.log('Express/SocketIO server on localhost :' + app.get('port'));
-        }));
+        this.server = http.createServer(app);
+        io = io.listen(this.server);
+        // io = io.listen( server.listen(app.get('port'), function(){
+        //     console.log('Express/SocketIO server on localhost :' + app.get('port'));
+        // }));
 
         io.set('log level', 1);
-        io.set('authorization', function (handshakeData, accept) {
-
-            // check if there's a cookie header
-            if (handshakeData.headers.cookie) {
-                // if there is, parse the cookie
-                handshakeData.cookie = cookie.parse(handshakeData.headers.cookie);
-                // the cookie value should be signed using the secret configured above (see line 17).
-                // use the secret to to decrypt the actual session id.
-                handshakeData.sessionID = connect.utils.parseSignedCookie(handshakeData.cookie['express.sid'], 'secret');
-                // if the session id matches the original value of the cookie, this means that
-                // we failed to decrypt the value, and therefore it is a fake.
-                if (handshakeData.cookie['express.sid'] == handshakeData.sessionID) {
-                    // reject the handshake
-                    console.log("Same value failed!!");
-                    return accept('Cookie is invalid.', false);
-                }
+        // We configure the socket.io authorization handler (handshake)
+        io.set('authorization', function (handshake_data, callback) {
+            if(!handshake_data.headers.cookie) {
+                console.log("No cookie!!");
+                return callback('No cookie transmitted.', false);
             }
 
-            else {
-               // if there isn't, turn down the connection with a message
-               // and leave the function.
-               console.log("No cookie!!");
-               return accept('No cookie transmitted.', false);
-            }
-            // accept the incoming connection
-            accept(null, true);
+            // We use the Express cookieParser created before to parse the cookie
+            // Express cookieParser(req, res, next) is used initialy to parse data in "req.headers.cookie".
+            // Here our cookies are stored in "data.headers.cookie", so we just pass "data" to the first argument of function
+            cookieParser(handshake_data, {}, function(parseErr) {
+                if(parseErr) { return callback('Error parsing cookies.', false); }
+
+                // Get the SID cookie
+                var sidCookie = (handshake_data.secureCookies && handshake_data.secureCookies[EXPRESS_SID_KEY]) ||
+                                (handshake_data.signedCookies && handshake_data.signedCookies[EXPRESS_SID_KEY]) ||
+                                (handshake_data.cookies && handshake_data.cookies[EXPRESS_SID_KEY]);
+
+                // Then we just need to load the session from the Express Session Store
+                sessionStore.load(sidCookie, function(err, session) {
+                    // And last, we check if the used has a valid session and if he is logged in
+                    if (err || !session || session.isLogged !== true) {
+                        callback('Not logged in.', false);
+                    } else {
+                        // If you want, you can attach the session to the handshake handshake_data, so you can use it again later
+                        handshake_data.session = session;
+
+                        callback(null, true);
+                    }
+                });
+            });
         });
-    }
+        //     // if there is, parse the cookie
+        //     handshake_data.cookie = parseCookie(handshake_data.headers.cookie);
+
+        //     console.log("!!");
+        //     console.log(handshake_data.cookie);
+        //     console.log("!!");
+        //     // the cookie value should be signed using the secret configured above (see line 17).
+        //     // use the secret to to decrypt the actual session id.
+        //     handshake_data.sessionID = connect.utils.parseSignedCookie(handshake_data.cookie['express.sid'], 'secret');
+        //     // if the session id matches the original value of the cookie, this means that
+        //     // we failed to decrypt the value, and therefore it is a fake.
+        //     if (handshake_data.cookie['express.sid'] == handshake_data.sessionID) {
+        //         // reject the handshake
+        //         console.log("Same value failed!!");
+        //         return callback('Cookie is invalid.', false);
+        //     }
+
+
+
+        //     // callback the incoming connection
+        //     callback(null, true);
+        // });
+        console.log("!!!AAA");
+    };
 
     this.onSocketConnected = function(socket) {
         //transform session id, saved in tses_uuid_map
