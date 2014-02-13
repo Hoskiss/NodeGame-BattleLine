@@ -24,7 +24,7 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-var BackgroundLayer = cc.Layer.extend({
+var BattleFieldLayer = cc.Layer.extend({
     isMouseDown:false,
     helloImg:null,
     helloLabel:null,
@@ -52,6 +52,8 @@ var BackgroundLayer = cc.Layer.extend({
             //window.player_id = msg.player_id;
             console.log("my player_id: " + data.player_id);
         });
+
+        self.SELF_BATTLE_LINE_POS = [[213, 325], [319, 325]]
 
         /////////////////////////////
         // 2. add a menu item with "X" image, which is clicked to quit the program
@@ -82,23 +84,29 @@ var BackgroundLayer = cc.Layer.extend({
         this.sprite.setScale(this.scale);
         this.addChild(this.sprite, 0);
 
-        var test_card = cc.Sprite.create("Blue_1.png");
-        test_card.setAnchorPoint(0.5, 0.5);
-        test_card.setPosition(213, 325);
-        test_card.setScale(this.scale);
+        var test_card = new HRenderCard("Blue_1.png", [213, 325], this.scale);
+
         //test_card.setScale(size.height/test_card.getContentSize().height);
         this.addChild(test_card);
 
         var test_sprite = cc.Sprite.createWithSpriteFrameName("Blue_7.png");
         console.log(test_sprite);
-        test_sprite.setPosition(size.width / 2, size.height / 2);
+
         test_sprite.setPosition(319, 325);
         test_sprite.setScale(this.scale);
         //test_sprite.setScale(3);
         this.addChild(test_sprite);
-
     }
+
 });
+
+// BattleFieldLayer.prototype = {
+//     renderCard: function(card_id, card_pos, card_state, rotate) {
+//         var COLOR_LIST = ['Red', 'Orange', 'Yellow',
+//                           'Green', 'Blue', 'Purple'];
+//         return (COLOR_LIST.indexOf(card_id.match(/^[a-z]+/i)[0]));
+//     }
+// }
 
 var HBattleLineScene = cc.Scene.extend({
     onEnter:function () {
@@ -107,7 +115,7 @@ var HBattleLineScene = cc.Scene.extend({
         var spriteFrameCache = cc.SpriteFrameCache.getInstance();
         spriteFrameCache.addSpriteFrames("HBL-Cards.plist","HBL-Cards.png");
 
-        var layer = new BackgroundLayer();
+        var layer = new BattleFieldLayer();
         this.addChild(layer);
         layer.init();
     }
