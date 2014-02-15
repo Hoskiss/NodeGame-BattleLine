@@ -52,8 +52,30 @@ var BattleFieldLayer = cc.Layer.extend({
             //window.player_id = msg.player_id;
             console.log("my player_id: " + data.player_id);
         });
+        //////
+        this.CARD_ORDER = ['Red', 'Orange', 'Yellow',
+                           'Green', 'Blue', 'Purple', 'Tactics']
 
-        self.SELF_BATTLE_LINE_POS = [[213, 325], [319, 325]]
+        // add first and last pos for scout
+        this.BATTLE_LINE_TOTAL_NUM = 9
+
+        this.SELF_IN_HAND_POS = [[160, 80], [260, 80], [360, 80],
+                                 [460, 80], [560, 80], [660, 80],
+                                 [760, 80], [860, 80], [960, 80]];
+
+        this.SELF_BATTLE_LINE_POS = [[213, 325], [319, 325], [426, 325],
+                                     [532, 325], [639, 325], [746, 325],
+                                     [852, 325], [958, 325], [1065, 325]];
+
+        this.RIVAL_BATTLE_LINE_POS = [[213, 478], [319, 478], [426, 478],
+                                     [532, 478], [639, 478], [746, 478],
+                                     [852, 478], [958, 478], [1065, 478]];
+
+        this.cards_render_in_hand = [];
+
+        this.HANDCARD_ANIMATION_UPPERBOUND = 104;
+        this.HANDCARD_ANIMATION_LOWERBOUND = 80;
+        this.ANIMATION_OFFSET = 5;
 
         /////////////////////////////
         // 2. add a menu item with "X" image, which is clicked to quit the program
@@ -75,6 +97,9 @@ var BattleFieldLayer = cc.Layer.extend({
         this.addChild(menu, 1);
         closeItem.setPosition(size.width - 20, 20);
 
+
+        this.setMouseEnabled(true);
+
         // add Background Map
         this.sprite = cc.Sprite.create(s_BackgroundMap);
         this.sprite.setAnchorPoint(0.5, 0.5);
@@ -84,18 +109,55 @@ var BattleFieldLayer = cc.Layer.extend({
         this.sprite.setScale(this.scale);
         this.addChild(this.sprite, 0);
 
-        var test_card = new HRenderCard("Blue_1.png", [213, 325], this.scale);
+
+
+        for (var index = 0; index < this.RIVAL_BATTLE_LINE_POS.length; index++) {
+            var test_card = new HRenderCard("Blue_1.png",
+                                            this.RIVAL_BATTLE_LINE_POS[index],
+                                            this.scale);
+            this.addChild(test_card);
+            //Do something
+        }
+
+        for (var index = 1; index < this.SELF_IN_HAND_POS.length-1; index++) {
+            var test_card = new HRenderCard("Blue_1.png",
+                                            this.SELF_IN_HAND_POS[index],
+                                            this.scale);
+
+            this.addChild(test_card);
+
+            this.cards_render_in_hand.push(test_card);
+
+            //Do something
+        }
 
         //test_card.setScale(size.height/test_card.getContentSize().height);
         this.addChild(test_card);
 
-        var test_sprite = cc.Sprite.createWithSpriteFrameName("Blue_7.png");
-        console.log(test_sprite);
+        this.test_sprite = cc.Sprite.createWithSpriteFrameName("Blue_7.png");
+        this.test_sprite.setPosition(319, 325);
+        this.test_sprite.setScale(this.scale);
+        //this.test_sprite.setScale(3);
+        this.addChild(this.test_sprite);
+    },
 
-        test_sprite.setPosition(319, 325);
-        test_sprite.setScale(this.scale);
-        //test_sprite.setScale(3);
-        this.addChild(test_sprite);
+    onMouseMoved:function(event){
+        var location = event.getLocation();
+
+
+        for (var index = 0; index < this.cards_render_in_hand.length; index++) {
+
+            this.cards_render_in_hand[index].onMouseAnimation(
+                location.x, location.y,
+                this.HANDCARD_ANIMATION_UPPERBOUND,
+                this.HANDCARD_ANIMATION_LOWERBOUND,
+                this.ANIMATION_OFFSET);
+
+
+            //Do something
+        }
+        // redCircle.setPosition(location);
+        // this.test_sprite.setPosition(location);
     }
 
 });
