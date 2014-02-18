@@ -31,14 +31,14 @@ var BattleFieldLayer = cc.Layer.extend({
     circle:null,
     sprite:null,
 
-    init:function () {
+    init: function() {
 
-        //////////////////////////////
-        // 1. super init first
         this._super();
 
-        var GAME_PORT = 8009;
+        ////////////////
+        //game port should pass in init
         // socket io connect
+        var GAME_PORT = 8009;
         var server_host = document.domain;
         this.socket = io.connect(server_host,
                                  {port: GAME_PORT, transports: ["websocket"]});
@@ -53,6 +53,9 @@ var BattleFieldLayer = cc.Layer.extend({
             console.log("my player_id: " + data.player_id);
         });
         //////
+        ////////////////
+
+
         this.CARD_ORDER = ['Red', 'Orange', 'Yellow',
                            'Green', 'Blue', 'Purple', 'Tactics']
 
@@ -71,11 +74,36 @@ var BattleFieldLayer = cc.Layer.extend({
                                      [532, 478], [639, 478], [746, 478],
                                      [852, 478], [958, 478], [1065, 478]];
 
-        this.cards_render_in_hand = [];
+        this.cards_in_hand = [];
+        this.cards_on_self_field = new Array(this.BATTLE_LINE_TOTAL_NUM);
+        for (var index=0; index < this.cards_on_self_field.length; index++) {
+            this.cards_on_self_field[index] = new Array();
+        }
+        this.cards_on_rival_field = new Array(this.BATTLE_LINE_TOTAL_NUM);
+        for (var index=0; index < this.cards_on_rival_field.length; index++) {
+            this.cards_on_rival_field[index] = new Array();
+        }
+
+        // only tactics re-rearrange kind would in these list
+        this.cards_self_tactics = [];
+        this.cards_rival_tactics = [];
+
+        this.cards_back = [];
+        this.tactics_self_num_on_battle = 0;
+
+
+        this.win_outcome_on_each_line = new Array(this.BATTLE_LINE_TOTAL_NUM);
 
         this.HANDCARD_ANIMATION_UPPERBOUND = 104;
         this.HANDCARD_ANIMATION_LOWERBOUND = 80;
         this.ANIMATION_OFFSET = 5;
+
+        this.game_state = BattleFieldLayer.SELF_SHOULD_MOVE_STATE;
+        this.picking_card = undefined;
+
+        this.wildcard_used = false;
+
+        this.need_instruction_place = undefined;
 
         /////////////////////////////
         // 2. add a menu item with "X" image, which is clicked to quit the program
@@ -99,6 +127,7 @@ var BattleFieldLayer = cc.Layer.extend({
 
 
         this.setMouseEnabled(true);
+        // this.setTouchEnabled(true);
 
         // add Background Map
         this.sprite = cc.Sprite.create(s_BackgroundMap);
@@ -126,7 +155,7 @@ var BattleFieldLayer = cc.Layer.extend({
 
             this.addChild(test_card);
 
-            this.cards_render_in_hand.push(test_card);
+            this.cards_in_hand.push(test_card);
 
             //Do something
         }
@@ -141,26 +170,138 @@ var BattleFieldLayer = cc.Layer.extend({
         this.addChild(this.test_sprite);
     },
 
-    onMouseMoved:function(event){
+
+
+    onMouseMoved: function(event){
+
+        if (this.game_state !== BattleFieldLayer.SELF_SHOULD_MOVE_STATE) {
+            return;
+        }
+
+        if (this.picking_card !== undefined) {
+            return;
+        }
+
+
         var location = event.getLocation();
 
 
-        for (var index = 0; index < this.cards_render_in_hand.length; index++) {
+        for (var index = 0; index < this.cards_in_hand.length; index++) {
 
-            this.cards_render_in_hand[index].onMouseAnimation(
+            this.cards_in_hand[index].onMouseAnimation(
                 location.x, location.y,
                 this.HANDCARD_ANIMATION_UPPERBOUND,
                 this.HANDCARD_ANIMATION_LOWERBOUND,
                 this.ANIMATION_OFFSET);
 
-
-            //Do something
         }
         // redCircle.setPosition(location);
         // this.test_sprite.setPosition(location);
+    },
+
+    onMouseDown: function(event) {
+
+
+        var location = event.getLocation();
+
+        // left click event could triger pick/move(put)/draw
+        this.checkPickUpCardInHand(location.x, location.y);
+        // self.checkMoveCardInHand(mouse_x, mouse_y)
+
+        // self.checkGenerateQueryBoxAfterTactics(mouse_x, mouse_y)
+        // self.checkConfirmTextBox(mouse_x, mouse_y)
+        // self.checkDrawCard(mouse_x, mouse_y)
+    },
+
+    onRightMouseDown: function(event) {
+        console.log("EEEEEEEEEEEEE");
+        console.log(event);
+    },
+
+    countSelfTacticsNumOnBattle: function() {
+        var count = 0
+        for (var line_index=0; line_index<this.cards_on_self_field.length; line_index++) {
+            for (var card_index=0; card_index<this.cacards_on_self_field[line_index].length; card_index++) {
+                if (this.cacards_on_self_field[line_index][card_index].isTactics()) {
+                    count += 1;
+                }
+            }
+        }
+        for (var card_index=0; card_index<this.cards_self_tactics.length; card_index++) {
+            if (this.cards_self_tactics[card_index].isTactics()) {
+                count += 1;
+            }
+        }
+        return count;
+    },
+
+    countRivalTacticsNumOnBattle: function() {
+        var count = 0
+        for (var line_index=0; line_index<this.cards_on_rival_field.length; line_index++) {
+            for (var card_index=0; card_index<this.cards_on_rival_field[line_index].length; card_index++) {
+                if (this.cards_on_rival_field[line_index][card_index].isTactics()) {
+                    count += 1;
+                }
+            }
+        }
+        for (var card_index=0; card_index<this.cards_rival_tactics.length; card_index++) {
+            if (this.cards_rival_tactics[card_index].isTactics()) {
+                count += 1;
+            }
+        }
+        return count;
+    },
+
+    checkPickUpCardInHand: function(mouse_x, mouse_y) {
+        if (this.game_state !== BattleFieldLayer.SELF_SHOULD_MOVE_STATE) {
+            return;
+        }
+
+        for (var index = 0; index < this.cards_in_hand.length; index++) {
+            if ( this.picking_card !== undefined ) {
+                continue;
+            }
+            if ( this.cards_in_hand[index].isTacticsWildCard() &&
+                 this.wildcard_used ) {
+                continue;
+            }
+            if ( this.cards_in_hand[index].isTactics() &&
+                 this.countSelfTacticsNumOnBattle() > this.countRivalTacticsNumOnBattle() ) {
+                continue;
+            }
+            if ( !this.cards_in_hand[index].isTouch(mouse_x, mouse_y) ) {
+                continue;
+            }
+
+            this.cards_in_hand[index].state = "PICKED";
+            this.picking_card = this.cards_in_hand[index];
+            // assign undefined to this elem in array
+            delete this.cards_in_hand[index];
+            console.log(this.picking_card.card_id);
+
+            if ( this.picking_card.isTacticsReArrange() ) {
+                this.need_instruction_place = true;
+            }
+            // #generate translucent card
+            // if(self.translucent_card != None):
+            //     self.translucent_card.kill
+            // self.translucent_card = TranslucentCard(self.picking_card.card_id, (0, 0))
+            // self.translucent_group.add(self.translucent_card)
+        }
+
+
     }
 
+
 });
+
+BattleFieldLayer.SELF_SHOULD_MOVE_STATE = 'SELF_SHOULD_MOVE_STATE'
+BattleFieldLayer.SELF_MOVE_AFTER_TACTICS_STATE = 'SELF_MOVE_AFTER_TACTICS_STATE'
+BattleFieldLayer.SELF_MOVE_DONE_STATE = 'SELF_MOVE_DONE_STATE'
+BattleFieldLayer.RIVAL_SHOULD_MOVE_STATE = 'RIVAL_SHOULD_MOVE_STATE'
+BattleFieldLayer.RIVAL_MOVE_AFTER_TACTICS_STATE = 'RIVAL_MOVE_AFTER_TACTICS_STATE'
+BattleFieldLayer.RIVAL_MOVE_DONE_STATE = 'RIVAL_MOVE_DONE_STATE'
+BattleFieldLayer.GAME_OVER_STATE = 'GAME_OVER_STATE'
 
 // BattleFieldLayer.prototype = {
 //     renderCard: function(card_id, card_pos, card_state, rotate) {
