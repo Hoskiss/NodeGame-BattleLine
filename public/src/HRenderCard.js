@@ -109,4 +109,6 @@ var HRenderCard = cc.Sprite.extend({
 
 HRenderCard.WIDTH = 84;
 HRenderCard.HIGHT = 116;
-
+// for sort
+HRenderCard.CARD_ORDER = ['Red', 'Orange', 'Yellow',
+                          'Green', 'Blue', 'Purple', 'Tactics']

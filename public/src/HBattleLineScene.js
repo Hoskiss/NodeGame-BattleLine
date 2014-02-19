@@ -36,6 +36,7 @@ var BattleFieldLayer = cc.Layer.extend({
         this._super();
 
         ////////////////
+        // SOCKET : LATER
         //game port should pass in init
         // socket io connect
         var GAME_PORT = 8009;
@@ -52,58 +53,51 @@ var BattleFieldLayer = cc.Layer.extend({
             //window.player_id = msg.player_id;
             console.log("my player_id: " + data.player_id);
         });
-        //////
         ////////////////
 
 
-        this.CARD_ORDER = ['Red', 'Orange', 'Yellow',
-                           'Green', 'Blue', 'Purple', 'Tactics']
-
-        // add first and last pos for scout
-        this.BATTLE_LINE_TOTAL_NUM = 9
-
-        this.SELF_IN_HAND_POS = [[160, 80], [260, 80], [360, 80],
-                                 [460, 80], [560, 80], [660, 80],
-                                 [760, 80], [860, 80], [960, 80]];
-
-        this.SELF_BATTLE_LINE_POS = [[213, 325], [319, 325], [426, 325],
-                                     [532, 325], [639, 325], [746, 325],
-                                     [852, 325], [958, 325], [1065, 325]];
-
-        this.RIVAL_BATTLE_LINE_POS = [[213, 478], [319, 478], [426, 478],
-                                     [532, 478], [639, 478], [746, 478],
-                                     [852, 478], [958, 478], [1065, 478]];
-
         this.cards_in_hand = [];
-        this.cards_on_self_field = new Array(this.BATTLE_LINE_TOTAL_NUM);
+        this.cards_on_self_field = new Array(BattleFieldLayer.BATTLE_LINE_TOTAL_NUM);
         for (var index=0; index < this.cards_on_self_field.length; index++) {
             this.cards_on_self_field[index] = new Array();
         }
-        this.cards_on_rival_field = new Array(this.BATTLE_LINE_TOTAL_NUM);
+        this.cards_on_rival_field = new Array(BattleFieldLayer.BATTLE_LINE_TOTAL_NUM);
         for (var index=0; index < this.cards_on_rival_field.length; index++) {
             this.cards_on_rival_field[index] = new Array();
         }
 
-        // only tactics re-rearrange kind would in these list
+        this.picking_card = undefined;
+        this.rival_picked_card = HRenderCard(this.SOLDIER_BACK_NAME);
+
+        // only tactics re-rearrange kind would in these list (not in each line)
         this.cards_self_tactics = [];
         this.cards_rival_tactics = [];
+        this.self_tactics_pos = (1276, 469);
+        this.rival_tactics_pos = (72, 297);
 
-        this.cards_back = [];
+        // Tactics
         this.tactics_self_num_on_battle = 0;
+        this.wildcard_used = False;
+        this.which_line_in_fog_environment = -1;
+        this.which_line_in_mud_environment = -1;
+        // For render...should be more pretty
+        this.middle_fog_tactics_card = undefined;
+        this.middle_mud_tactics_card = undefined;
+        // hold for some actions after use tactics
+        this.latest_tactics_card = undefined;
+        // special draw card count for scout tactics
+        this.scout_draw_card_count = 0;
+        this.scout_return_card_count = 0;
 
-
-        this.win_outcome_on_each_line = new Array(this.BATTLE_LINE_TOTAL_NUM);
-
-        this.HANDCARD_ANIMATION_UPPERBOUND = 104;
-        this.HANDCARD_ANIMATION_LOWERBOUND = 80;
-        this.ANIMATION_OFFSET = 5;
-
-        this.game_state = BattleFieldLayer.SELF_SHOULD_MOVE_STATE;
-        this.picking_card = undefined;
-
-        this.wildcard_used = false;
-
+        // for (query)actions after tactics
         this.need_instruction_place = undefined;
+        this.query_text_box = undefined;
+        this.query_color_selector_box = undefined;
+        this.query_number_selector_box = undefined;
+
+        // translucent_surface
+        self.win_outcome_each_line = new Array(BattleFieldLayer.BATTLE_LINE_TOTAL_NUM);
+        self.game_state = BattleFieldLayer.RIVAL_SHOULD_MOVE_STATE;
 
         /////////////////////////////
         // 2. add a menu item with "X" image, which is clicked to quit the program
@@ -295,13 +289,50 @@ var BattleFieldLayer = cc.Layer.extend({
 
 });
 
-BattleFieldLayer.SELF_SHOULD_MOVE_STATE = 'SELF_SHOULD_MOVE_STATE'
-BattleFieldLayer.SELF_MOVE_AFTER_TACTICS_STATE = 'SELF_MOVE_AFTER_TACTICS_STATE'
-BattleFieldLayer.SELF_MOVE_DONE_STATE = 'SELF_MOVE_DONE_STATE'
-BattleFieldLayer.RIVAL_SHOULD_MOVE_STATE = 'RIVAL_SHOULD_MOVE_STATE'
-BattleFieldLayer.RIVAL_MOVE_AFTER_TACTICS_STATE = 'RIVAL_MOVE_AFTER_TACTICS_STATE'
-BattleFieldLayer.RIVAL_MOVE_DONE_STATE = 'RIVAL_MOVE_DONE_STATE'
-BattleFieldLayer.GAME_OVER_STATE = 'GAME_OVER_STATE'
+// Add first and last pos for scout
+BattleFieldLayer.BATTLE_LINE_TOTAL_NUM = 9;
+// From near to far
+BattleFieldLayer.SELF_IN_HAND_POS = [[160, 80], [260, 80], [360, 80],
+                                     [460, 80], [560, 80], [660, 80],
+                                     [760, 80], [860, 80], [960, 80]];
+BattleFieldLayer.SELF_BATTLE_LINE_POS = [[213, 325], [319, 325], [426, 325],
+                                         [532, 325], [639, 325], [746, 325],
+                                         [852, 325], [958, 325], [1065, 325]];
+BattleFieldLayer.RIVAL_BATTLE_LINE_POS = [[213, 478], [319, 478], [426, 478],
+                                          [532, 478], [639, 478], [746, 478],
+                                          [852, 478], [958, 478], [1065, 478]];
+
+// Static card
+BattleFieldLayer.SOLDIER_BACK = HRenderCard("Soldier_Back");
+BattleFieldLayer.SOLDIER_BACK.pos = (1275, 293);
+
+BattleFieldLayer.TACTICS_BACK = HRenderCard("Tactics_Back");
+BattleFieldLayer.TACTICS_BACK.pos = (70, 465);
+
+BattleFieldLayer.AIDE_CARD = HRenderCard('Aide');
+BattleFieldLayer.AIDE_CARD.pos = (1154, 745);
+
+// Animation
+BattleFieldLayer.HANDCARD_ANIMATION_UPPERBOUND = 715;
+BattleFieldLayer.HANDCARD_ANIMATION_LOWERBOUND = 745;
+BattleFieldLayer.ANIMATION_OFFSET = 3;
+BattleFieldLayer.ONE_FOURTH_CARD_HEIGHT = int(HRenderCard.HEIGHT/4);
+
+// decorated color
+BattleFieldLayer.FOCUS_EDGE_ORANGE = (250, 128, 10);
+BattleFieldLayer.INSTRUCTION_PLACE_BLUE = (0, 0, 250);
+BattleFieldLayer.FOCUS_EDGE_WIDTH = 3;
+
+// For win-lose result
+BattleFieldLayer.MINIMUM_CARDS_NUM_FOR_CATEGARY = 3;
+
+BattleFieldLayer.SELF_SHOULD_MOVE_STATE = 'SELF_SHOULD_MOVE_STATE';
+BattleFieldLayer.SELF_MOVE_AFTER_TACTICS_STATE = 'SELF_MOVE_AFTER_TACTICS_STATE';
+BattleFieldLayer.SELF_MOVE_DONE_STATE = 'SELF_MOVE_DONE_STATE';
+BattleFieldLayer.RIVAL_SHOULD_MOVE_STATE = 'RIVAL_SHOULD_MOVE_STATE';
+BattleFieldLayer.RIVAL_MOVE_AFTER_TACTICS_STATE = 'RIVAL_MOVE_AFTER_TACTICS_STATE';
+BattleFieldLayer.RIVAL_MOVE_DONE_STATE = 'RIVAL_MOVE_DONE_STATE';
+BattleFieldLayer.GAME_OVER_STATE = 'GAME_OVER_STATE';
 
 // BattleFieldLayer.prototype = {
 //     renderCard: function(card_id, card_pos, card_state, rotate) {
