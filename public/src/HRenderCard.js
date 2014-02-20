@@ -85,15 +85,13 @@ var HRenderCard = cc.Sprite.extend({
         var curr_pos = this.getPosition();
         // console.log(curr_pos);
         if (x > curr_pos.x-HRenderCard.WIDTH/2 && x < curr_pos.x+HRenderCard.WIDTH/2 &&
-            y > curr_pos.y-HRenderCard.HIGHT/2 && y < curr_pos.y+HRenderCard.HIGHT/2) {
+            y > curr_pos.y-HRenderCard.HEIGHT/2 && y < curr_pos.y+HRenderCard.HEIGHT/2) {
             return true;
         }
         return false
     },
 
     onMouseAnimation: function(mouse_x, mouse_y, up_bound, low_bound, offset) {
-
-
         var curr_pos = this.getPosition();
 
         if (this.isTouch(mouse_x, mouse_y) && curr_pos.y < up_bound) {
@@ -108,7 +106,7 @@ var HRenderCard = cc.Sprite.extend({
 });
 
 HRenderCard.WIDTH = 84;
-HRenderCard.HIGHT = 116;
+HRenderCard.HEIGHT = 116;
 // for sort
 HRenderCard.CARD_ORDER = ['Red', 'Orange', 'Yellow',
                           'Green', 'Blue', 'Purple', 'Tactics']

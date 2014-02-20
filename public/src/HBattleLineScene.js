@@ -34,28 +34,42 @@ var BattleFieldLayer = cc.Layer.extend({
     init: function() {
 
         this._super();
+        // this.setTouchEnabled(true);
+        this.setMouseEnabled(true);
+
+        // add Background Map
+        var window_size = cc.Director.getInstance().getWinSize();
+        var background_sprite = cc.Sprite.create(s_BackgroundMap);
+        background_sprite.setPosition(window_size.width / 2, window_size.height / 2);
+        // total scale based on background scale
+        this.scale = (window_size.height)/(background_sprite.getContentSize().height);
+        background_sprite.setScale(this.scale);
+        this.addChild(background_sprite, 0);
 
         ////////////////
-        // SOCKET : LATER
-        //game port should pass in init
-        // socket io connect
-        var GAME_PORT = 8009;
-        var server_host = document.domain;
-        this.socket = io.connect(server_host,
-                                 {port: GAME_PORT, transports: ["websocket"]});
+        //tmp
+        // 2. add a menu item with "X" image, which is clicked to quit the program
+        //    you may modify it.
+        // ask director the window window_size
 
-        this.socket.on('connect', function() {
-            console.log('connected!')
-        });
 
-        this.socket.on('initial', function(data) {
-            //gloabal
-            //window.player_id = msg.player_id;
-            console.log("my player_id: " + data.player_id);
-        });
+        // add a "close" icon to exit the progress. it's an autorelease object
+        var closeItem = cc.MenuItemImage.create(
+            s_CloseNormal,
+            s_CloseSelected,
+            function () {
+                cc.log("close");
+            },this);
+        closeItem.setAnchorPoint(0.5, 0.5);
+
+        var menu = cc.Menu.create(closeItem);
+        menu.setPosition(0, 0);
+        this.addChild(menu, 1);
+        closeItem.setPosition(window_size.width - 20, 20);
         ////////////////
 
 
+        // attributes
         this.cards_in_hand = [];
         this.cards_on_self_field = new Array(BattleFieldLayer.BATTLE_LINE_TOTAL_NUM);
         for (var index=0; index < this.cards_on_self_field.length; index++) {
@@ -77,7 +91,7 @@ var BattleFieldLayer = cc.Layer.extend({
 
         // Tactics
         this.tactics_self_num_on_battle = 0;
-        this.wildcard_used = False;
+        this.wildcard_used = false;
         this.which_line_in_fog_environment = -1;
         this.which_line_in_mud_environment = -1;
         // For render...should be more pretty
@@ -98,53 +112,41 @@ var BattleFieldLayer = cc.Layer.extend({
         // translucent_surface
         self.win_outcome_each_line = new Array(BattleFieldLayer.BATTLE_LINE_TOTAL_NUM);
         self.game_state = BattleFieldLayer.RIVAL_SHOULD_MOVE_STATE;
-
-        /////////////////////////////
-        // 2. add a menu item with "X" image, which is clicked to quit the program
-        //    you may modify it.
-        // ask director the window size
-        var size = cc.Director.getInstance().getWinSize();
-
-        // add a "close" icon to exit the progress. it's an autorelease object
-        var closeItem = cc.MenuItemImage.create(
-            s_CloseNormal,
-            s_CloseSelected,
-            function () {
-                cc.log("close");
-            },this);
-        closeItem.setAnchorPoint(0.5, 0.5);
-
-        var menu = cc.Menu.create(closeItem);
-        menu.setPosition(0, 0);
-        this.addChild(menu, 1);
-        closeItem.setPosition(size.width - 20, 20);
+        //////////////////
 
 
-        this.setMouseEnabled(true);
-        // this.setTouchEnabled(true);
+        ////////////////
+        // tmp
+        // SOCKET : LATER
+        //game port should pass in init
+        // socket io connect
+        var GAME_PORT = 8009;
+        var server_host = document.domain;
+        this.socket = io.connect(server_host,
+                                 {port: GAME_PORT, transports: ["websocket"]});
 
-        // add Background Map
-        this.sprite = cc.Sprite.create(s_BackgroundMap);
-        this.sprite.setAnchorPoint(0.5, 0.5);
-        this.sprite.setPosition(size.width / 2, size.height / 2);
-        // total scale based on background scale
-        this.scale = size.height/this.sprite.getContentSize().height;
-        this.sprite.setScale(this.scale);
-        this.addChild(this.sprite, 0);
+        this.socket.on('connect', function() {
+            console.log('connected!')
+        });
 
+        this.socket.on('initial', function(data) {
+            //gloabal
+            //window.player_id = msg.player_id;
+            console.log("my player_id: " + data.player_id);
+        });
+        ////////////////
 
-
-        for (var index = 0; index < this.RIVAL_BATTLE_LINE_POS.length; index++) {
+        for (var index = 0; index < BattleFieldLayer.RIVAL_BATTLE_LINE_POS.length; index++) {
             var test_card = new HRenderCard("Blue_1.png",
-                                            this.RIVAL_BATTLE_LINE_POS[index],
+                                            BattleFieldLayer.RIVAL_BATTLE_LINE_POS[index],
                                             this.scale);
             this.addChild(test_card);
             //Do something
         }
 
-        for (var index = 1; index < this.SELF_IN_HAND_POS.length-1; index++) {
+        for (var index = 1; index < BattleFieldLayer.SELF_IN_HAND_POS.length-1; index++) {
             var test_card = new HRenderCard("Blue_1.png",
-                                            this.SELF_IN_HAND_POS[index],
+                                            BattleFieldLayer.SELF_IN_HAND_POS[index],
                                             this.scale);
 
             this.addChild(test_card);
@@ -154,7 +156,7 @@ var BattleFieldLayer = cc.Layer.extend({
             //Do something
         }
 
-        //test_card.setScale(size.height/test_card.getContentSize().height);
+        //test_card.setScale(window_size.height/test_card.getContentSize().height);
         this.addChild(test_card);
 
         this.test_sprite = cc.Sprite.createWithSpriteFrameName("Blue_7.png");
@@ -165,32 +167,22 @@ var BattleFieldLayer = cc.Layer.extend({
     },
 
 
-
     onMouseMoved: function(event){
-
         if (this.game_state !== BattleFieldLayer.SELF_SHOULD_MOVE_STATE) {
             return;
         }
-
         if (this.picking_card !== undefined) {
             return;
         }
 
-
         var location = event.getLocation();
-
-
         for (var index = 0; index < this.cards_in_hand.length; index++) {
-
             this.cards_in_hand[index].onMouseAnimation(
                 location.x, location.y,
-                this.HANDCARD_ANIMATION_UPPERBOUND,
-                this.HANDCARD_ANIMATION_LOWERBOUND,
-                this.ANIMATION_OFFSET);
-
+                BattleFieldLayer.HANDCARD_ANIMATION_UPPERBOUND,
+                BattleFieldLayer.HANDCARD_ANIMATION_LOWERBOUND,
+                BattleFieldLayer.ANIMATION_OFFSET);
         }
-        // redCircle.setPosition(location);
-        // this.test_sprite.setPosition(location);
     },
 
     onMouseDown: function(event) {
@@ -303,20 +295,20 @@ BattleFieldLayer.RIVAL_BATTLE_LINE_POS = [[213, 478], [319, 478], [426, 478],
                                           [852, 478], [958, 478], [1065, 478]];
 
 // Static card
-BattleFieldLayer.SOLDIER_BACK = HRenderCard("Soldier_Back");
-BattleFieldLayer.SOLDIER_BACK.pos = (1275, 293);
+BattleFieldLayer.SOLDIER_BACK = HRenderCard("Soldier_Back",
+                                            (1275, 293));
 
-BattleFieldLayer.TACTICS_BACK = HRenderCard("Tactics_Back");
-BattleFieldLayer.TACTICS_BACK.pos = (70, 465);
+BattleFieldLayer.TACTICS_BACK = HRenderCard("Tactics_Back",
+                                            (70, 465));
 
-BattleFieldLayer.AIDE_CARD = HRenderCard('Aide');
-BattleFieldLayer.AIDE_CARD.pos = (1154, 745);
+BattleFieldLayer.AIDE_CARD = HRenderCard("Aide",
+                                         (1154, 745));
 
 // Animation
 BattleFieldLayer.HANDCARD_ANIMATION_UPPERBOUND = 715;
 BattleFieldLayer.HANDCARD_ANIMATION_LOWERBOUND = 745;
 BattleFieldLayer.ANIMATION_OFFSET = 3;
-BattleFieldLayer.ONE_FOURTH_CARD_HEIGHT = int(HRenderCard.HEIGHT/4);
+BattleFieldLayer.ONE_FOURTH_CARD_HEIGHT = (HRenderCard.HEIGHT/4);
 
 // decorated color
 BattleFieldLayer.FOCUS_EDGE_ORANGE = (250, 128, 10);
@@ -347,7 +339,7 @@ var HBattleLineScene = cc.Scene.extend({
         this._super();
 
         var spriteFrameCache = cc.SpriteFrameCache.getInstance();
-        spriteFrameCache.addSpriteFrames("HBL-Cards.plist","HBL-Cards.png");
+        spriteFrameCache.addSpriteFrames("HBL-Cards.plist", "HBL-Cards.png");
 
         var layer = new BattleFieldLayer();
         this.addChild(layer);
