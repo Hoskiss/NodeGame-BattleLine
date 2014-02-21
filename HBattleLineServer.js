@@ -19,9 +19,13 @@ function HBattleLineServer() {
         tses_uuid_map = new hashes.HashTable();
     var UUID = require('node-uuid');
 
+    var cards_mgr = require('./HCardsManager');
+
     var GAME_PORT = process.env.PORT || 8009,
         GAME_HOST = process.env.HOST || 'localhost';
 
+    // For socket callback
+    var self = this;
     // var c_m = require('./HCardsManager');
     // c1 = new c_m.CardCategory([["aa", 1], ["aa", 2], ["aa", 90] ]);
     // c2 = new c_m.CardCategory([["bb", 10], ["bb", 20], ["bb", 90] ]);
@@ -124,6 +128,7 @@ function HBattleLineServer() {
         if (!tses_uuid_map.contains(tses_id)) {
             console.log("!!! New Session Connected!!");
             console.log("--- " + tses_id + " ---");
+            socket.tses_id = tses_id;
 
             player_id = UUID();
             tses_uuid_map.add(tses_id, player_id);
@@ -135,7 +140,18 @@ function HBattleLineServer() {
             player_id = tses_uuid_map.get(tses_id).value;
         }
 
-        socket.emit('initial', { player_id: player_id });
+        socket.on('ask first draw cards', function () {
+            console.log("AAA");
+            console.log(socket.tses_id);
+            self.testServerHi();
+        });
+
+        socket.emit('initial', {player_id: player_id});
+        //Tmp
+        socket.emit('game start');
+
+
+
     };
 
     this.run = function() {
@@ -143,6 +159,21 @@ function HBattleLineServer() {
             console.log('Express/SocketIO server on localhost :' + GAME_PORT);
         });
     };
+
+    //TMP
+    this.testServerHi = function() {
+        console.log("serverHI");
+    };
+
+    this.sendfirstDrawCardsID = function(player_id){
+
+    };
+        cards_in_hand = [ card.card_id for card in self.card_mgr.firstDrawCardsInHand(data['channel_nickname']) ]
+        self.logger.debug( data['channel_nickname'] + " firstDrawCardsID: " + str(cards_in_hand) )
+
+        [ player.Send({ "action": "firstDrawCardsID", "cards_in_hand": cards_in_hand })
+          for player in self.players if player.nickname == data['channel_nickname'] ]
+
 
 }
 

@@ -110,30 +110,37 @@ var BattleFieldLayer = cc.Layer.extend({
         this.query_number_selector_box = undefined;
 
         // translucent_surface
-        self.win_outcome_each_line = new Array(BattleFieldLayer.BATTLE_LINE_TOTAL_NUM);
-        self.game_state = BattleFieldLayer.RIVAL_SHOULD_MOVE_STATE;
+        this.win_outcome_each_line = new Array(BattleFieldLayer.BATTLE_LINE_TOTAL_NUM);
+        // this.game_state = BattleFieldLayer.RIVAL_SHOULD_MOVE_STATE;
+        // tmp
+        this.game_state = BattleFieldLayer.SELF_SHOULD_MOVE_STATE;
+
         //////////////////
 
 
         ////////////////
-        // tmp
-        // SOCKET : LATER
-        //game port should pass in init
-        // socket io connect
-        var GAME_PORT = 8009;
+        // SOCKET IO CALLBACK
         var server_host = document.domain;
-        this.socket = io.connect(server_host,
-                                 {port: GAME_PORT, transports: ["websocket"]});
+        var game_port = document.location.port;
+        var socket = io.connect(server_host,
+                                 {port: game_port, transports: ["websocket"]});
 
-        this.socket.on('connect', function() {
-            console.log('connected!')
-        });
+        socket.on('connect', function() {
+            console.log('connected!');
+        }.bind(this));
 
-        this.socket.on('initial', function(data) {
+        socket.on('initial', function(data) {
             //gloabal
             //window.player_id = msg.player_id;
             console.log("my player_id: " + data.player_id);
-        });
+        }.bind(this));
+
+        socket.on('game start', function(data) {
+            socket.emit('ask first draw cards');
+            socket.emit('ask init game state');
+        }.bind(this));
+
+        //socket.emit('ask first draw cards');
         ////////////////
 
         for (var index = 0; index < BattleFieldLayer.RIVAL_BATTLE_LINE_POS.length; index++) {
@@ -166,6 +173,9 @@ var BattleFieldLayer = cc.Layer.extend({
         this.addChild(this.test_sprite);
     },
 
+    testHi: function(){
+        console.log("HIHIHIHIHIHIHIHIHIIIIIIIIII");
+    },
 
     onMouseMoved: function(event){
         if (this.game_state !== BattleFieldLayer.SELF_SHOULD_MOVE_STATE) {
