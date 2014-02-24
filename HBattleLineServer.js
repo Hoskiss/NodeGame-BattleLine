@@ -20,7 +20,8 @@ function HBattleLineServer() {
         ses_nick_map = new hashes.HashTable();
     //var UUID = require('node-uuid');
 
-    var cards_mgr = require('./HCardsManager');
+    var HCM = require('./HCardsManager'),
+        cards_mgr = new HCM.HCardsManager();
 
     var GAME_PORT = process.env.PORT || 8009,
         GAME_HOST = process.env.HOST || 'localhost';
@@ -47,7 +48,7 @@ function HBattleLineServer() {
     this.configureExpress = function() {
         app.configure( function() {
             app.use(express.logger('dev'));  /* 'default', 'short', 'tiny', 'dev' */
-            // app.use(express.bodyParser());
+            app.use(express.bodyParser());
             app.use(cookieParser);
             app.use(express.session({
                 store: sessionStore,
@@ -156,7 +157,7 @@ function HBattleLineServer() {
         }
 
         socket.on('ask first draw cards', function () {
-            console.log(socket.nick_name);
+            cards_mgr.firstDrawCardsInHand(socket.nick_name);
         });
 
         socket.emit('initial', {nick_name: socket.nick_name});

@@ -1,3 +1,4 @@
+var knuthShuffle = require('knuth-shuffle').knuthShuffle;
 
 var Card = function(card_id) {
     this.card_id = card_id;
@@ -76,9 +77,44 @@ CardCategory.prototype = {
 
 
 var HCardsManager = function() {
-  // always initialize all instance properties
-  this.bar = bar;
-  this.baz = 'baz'; // default value
+
+    this.cards_in_hand_lower = [];
+    this.cards_on_field_lower = new Array(HCardsManager.BATTLE_LINE_TOTAL_NUM);
+    for (var index=0; index < this.cards_on_field_lower.length; index++) {
+        this.cards_on_field_lower[index] = new Array();
+    }
+
+    this.cards_in_hand_upper = [];
+    this.cards_on_field_upper = new Array(HCardsManager.BATTLE_LINE_TOTAL_NUM);
+    for (var index=0; index < this.cards_on_field_upper.length; index++) {
+        this.cards_on_field_upper[index] = new Array();
+    }
+
+    // tactics;
+    this.lower_re_arrange_tactics = [];
+    this.upper_re_arrange_tactics = [];
+
+    this.which_line_fog = -1;
+    this.which_line_mud = -1;
+
+    this.cards_category_field_lower = new Array(HCardsManager.BATTLE_LINE_TOTAL_NUM);
+    this.cards_category_field_upper = new Array(HCardsManager.BATTLE_LINE_TOTAL_NUM);
+
+    this.win_outcome_each_line = new Array(HCardsManager.BATTLE_LINE_TOTAL_NUM);
+    this.state = HCardsManager.LOWER_SHOULD_MOVE_STATE;
+
+    this.random_soldier_index = new Array(HCardsManager.SOLDIER_CARD_LIST.length);
+    for (var index=0; index < this.random_soldier_index.length; index++) {
+        this.random_soldier_index[index] = index;
+    }
+    knuthShuffle(this.random_soldier_index);
+
+    this.random_tacticsr_index = new Array(HCardsManager.TACTICS_CARD_LIST.length);
+    for (var index=0; index < this.random_tacticsr_index.length; index++) {
+        this.random_tacticsr_index[index] = index;
+    }
+    knuthShuffle(this.random_tacticsr_index);
+
 }
 
 HCardsManager.SOLDIER_CARD_LIST = [
@@ -113,15 +149,60 @@ HCardsManager.UPPER_MOVE_AFTER_TACTICS_STATE = 'UPPER_MOVE_AFTER_TACTICS_STATE';
 HCardsManager.UPPER_MOVE_DONE_STATE = 'UPPER_MOVE_DONE_STATE';
 HCardsManager.GAME_OVER_STATE = 'GAME_OVER_STATE';
 
-// // class methods
-// Foo.prototype.fooBar = function() {
+// public methods
+HCardsManager.prototype.drawCard = function(card_type, which_player) {
+    if ('soldier' === card_type && 0 === this.random_soldier_index.length) {
+        return undefined;
+    }
+    if ('tactics' ===card_type && 0 === this.random_tacticsr_index.length) {
+        return undefined;
+    }
 
-// };
+    var draw_card_index = -1;
+    var draw_card_id = "";
 
-// export the class
-// module.exports = HCardsManager;
+    if ('soldier' === card_type) {
+        draw_card_index = this.random_soldier_index.pop();
+        draw_card_id = HCardsManager.SOLDIER_CARD_LIST[draw_card_index];
+    }
+    else if ('tactics' === card_type) {
+        draw_card_index = this.random_tacticsr_index.pop();
+        draw_card_id = HCardsManager.TACTICS_CARD_LIST[draw_card_index];
+    }
 
-//test
+    if ("lower" == which_player) {
+        this.cards_in_hand_lower.push(new Card(draw_card_id));
+    }
+    else {
+        this.cards_in_hand_upper.push(new Card(draw_card_id));
+    }
+
+    return draw_card_id;
+};
+
+HCardsManager.prototype.firstDrawCardsInHand = function(which_player) {
+    // first draw 7 cards in hand
+    var cards_in_which_hand = undefined;
+
+    if ('upper' === which_player) {
+        cards_in_which_hand = this.cards_in_hand_upper;
+    }
+    else {
+        cards_in_which_hand = this.cards_in_hand_lower;
+    }
+    // client reconnect...
+    if (7 === cards_in_which_hand.length) {
+        return cards_in_which_hand;
+    }
+
+    for (var index=0; index < HCardsManager.NUM_CARDS_IN_HAND; index++) {
+        this.drawCard('soldier', which_player);
+    }
+
+    // console.log(cards_in_which_hand);
+    return cards_in_which_hand;
+};
+
 module.exports.Card = Card;
 module.exports.CardCategory = CardCategory;
 module.exports.HCardsManager = HCardsManager;
