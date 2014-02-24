@@ -46,6 +46,9 @@ var BattleFieldLayer = cc.Layer.extend({
         background_sprite.setScale(this.scale);
         this.addChild(background_sprite, 0);
 
+
+        //////
+
         ////////////////
         //tmp
         // 2. add a menu item with "X" image, which is clicked to quit the program
@@ -144,32 +147,21 @@ var BattleFieldLayer = cc.Layer.extend({
         socket.on('first draw cards ID', function(data) {
             //gloabal
             //window.player_id = msg.player_id;
-            console.log("my first draw cards ID: " + data.cards_in_hand_id);
+
+            data.cards_in_hand_id.sort(HRenderCard.sortCardByID);
+            // console.log(data.cards_in_hand_id);
+
+            for (var index = 0; index < data.cards_in_hand_id.length; index++) {
+                var hand_card = new HRenderCard(data.cards_in_hand_id[index]+".png",
+                                                BattleFieldLayer.SELF_IN_HAND_POS[index+1],
+                                                this.scale);
+                this.cards_in_hand.push(hand_card);
+                this.addChild(hand_card);
+            }
         }.bind(this));
         ////////////////
 
-        for (var index = 0; index < BattleFieldLayer.RIVAL_BATTLE_LINE_POS.length; index++) {
-            var test_card = new HRenderCard("Blue_1.png",
-                                            BattleFieldLayer.RIVAL_BATTLE_LINE_POS[index],
-                                            this.scale);
-            this.addChild(test_card);
-            //Do something
-        }
-
-        for (var index = 1; index < BattleFieldLayer.SELF_IN_HAND_POS.length-1; index++) {
-            var test_card = new HRenderCard("Blue_1.png",
-                                            BattleFieldLayer.SELF_IN_HAND_POS[index],
-                                            this.scale);
-
-            this.addChild(test_card);
-
-            this.cards_in_hand.push(test_card);
-
-            //Do something
-        }
-
         //test_card.setScale(window_size.height/test_card.getContentSize().height);
-        this.addChild(test_card);
 
         this.test_sprite = cc.Sprite.createWithSpriteFrameName("Blue_7.png");
         this.test_sprite.setPosition(319, 325);
@@ -178,8 +170,9 @@ var BattleFieldLayer = cc.Layer.extend({
         this.addChild(this.test_sprite);
     },
 
-    testHi: function(){
-        console.log("HIHIHIHIHIHIHIHIHIIIIIIIIII");
+    sortCardByID: function(card_id_1, card_id_2){
+
+
     },
 
     onMouseMoved: function(event){

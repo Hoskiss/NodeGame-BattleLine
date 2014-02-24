@@ -8,6 +8,7 @@
         "hashes": "*",
         "knuth-shuffle": "*",
         "node-uuid": "*",
-        "socket.io": "*"
+        "socket.io": "*",
+        "winston": "*"
     }
 }

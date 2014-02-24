@@ -20,6 +20,11 @@ function HBattleLineServer() {
         ses_nick_map = new hashes.HashTable();
     //var UUID = require('node-uuid');
 
+    var winston = require('winston');
+    winston.add(winston.transports.File, {
+        filename: __filename.split('/').pop().split('.').shift()+'.log' });
+    winston.remove(winston.transports.Console);
+
     var HCM = require('./HCardsManager'),
         cards_mgr = new HCM.HCardsManager();
 
@@ -136,9 +141,6 @@ function HBattleLineServer() {
             }
 
             else {
-                console.log("!!! New Session Connected!!");
-                console.log("--- " + ses_id + " ---");
-
                 if (0===ses_nick_map.count()) {
                     socket.nick_name = "lower";
                 }
@@ -150,9 +152,12 @@ function HBattleLineServer() {
                     return;
                 }
 
+                winston.info("!!! New Session Connected!!")
+                winston.info("--- " + ses_id + " ---")
+                winston.info("--- " + socket.nick_name + " ---")
+
                 // player_id = UUID();
                 ses_nick_map.add(ses_id, socket.nick_name);
-                console.log(ses_nick_map.get(ses_id).value);
 
                 socket.emit('initial', {nick_name: socket.nick_name});
                 if(2===ses_nick_map.count()) {

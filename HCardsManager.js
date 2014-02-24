@@ -1,3 +1,6 @@
+var winston = require('winston');
+// winston.add(winston.transports.File, { filename: __dirname+'.log' });
+// winston.remove(winston.transports.Console);
 var knuthShuffle = require('knuth-shuffle').knuthShuffle;
 
 var Card = function(card_id) {
@@ -8,7 +11,7 @@ var Card = function(card_id) {
             this.color = this.card_id.match(/^[a-z]+/i)[0];
 
             this.number = this.card_id.match(/[0-9]+/i)[0];
-            console.log(this.number);
+            // console.log(this.number);
         }
         else {
             this.color = null;
@@ -196,14 +199,15 @@ HCardsManager.prototype.firstDrawCardsInHand = function(which_player) {
             this.drawCard('soldier', which_player);
         }
     }
-    // console.log(cards_in_which_hand);
 
     // return id only (save transmit data size)
     var cards_in_hand_id = [];
         for (var index=0; index < cards_in_which_hand.length; index++) {
             cards_in_hand_id.push(cards_in_which_hand[index].card_id);
     }
-    console.log(cards_in_hand_id);
+
+    winston.info("player: " + which_player);
+    winston.info(cards_in_hand_id);
     return cards_in_hand_id;
 };
 
