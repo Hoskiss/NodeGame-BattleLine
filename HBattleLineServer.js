@@ -1,11 +1,12 @@
 // reference: https://github.com/leeroybrun/socketio-express-sessions
+// http://socket.io/#how-to-use
 
 function HBattleLineServer() {
 
-    var io = require('socket.io');
-    var http = require('http');
     var express = require('express'),
         app = express();
+    var server = require('http').createServer(app);
+    var io = require('socket.io').listen(server);
 
     // We define the key of the cookie containing the Express SID
     var EXPRESS_SID_KEY = 'express.sid';
@@ -16,8 +17,8 @@ function HBattleLineServer() {
     var sessionStore = new express.session.MemoryStore();
 
     var hashes = require('hashes'),
-        tses_uuid_map = new hashes.HashTable();
-    var UUID = require('node-uuid');
+        ses_nick_map = new hashes.HashTable();
+    //var UUID = require('node-uuid');
 
     var cards_mgr = require('./HCardsManager');
 
@@ -46,10 +47,10 @@ function HBattleLineServer() {
     this.configureExpress = function() {
         app.configure( function() {
             app.use(express.logger('dev'));  /* 'default', 'short', 'tiny', 'dev' */
+            // app.use(express.bodyParser());
             app.use(cookieParser);
             app.use(express.session({
                 store: sessionStore,
-                cookie: {httpOnly: true},
                 key: EXPRESS_SID_KEY
             }));
 
@@ -70,92 +71,102 @@ function HBattleLineServer() {
     };
 
     this.configureSocketIO = function() {
-        this.server = http.createServer(app);
-        io = io.listen(this.server);
-
         io.set('log level', 1);
         // We configure the socket.io authorization handler (handshake)
-        io.set('authorization', function (handshake_data, callback) {
+        io.set('authorization', function (handshake_data, accept) {
             if(!handshake_data.headers.cookie) {
                 console.log("No cookie!!");
-                return callback('No cookie transmitted.', false);
+                return accept('No cookie transmitted.', false);
             }
 
+            // console.log(handshake_data.headers.cookie);
             // We use the Express cookieParser created before to parse the cookie
             // Express cookieParser(req, res, next) is used initialy to parse data in "req.headers.cookie".
             // Here our cookies are stored in "data.headers.cookie", so we just pass "data" to the first argument of function
-            cookieParser(handshake_data, {}, function(parseErr) {
-                if(parseErr) { return callback('Error parsing cookies.', false); }
+            cookieParser(handshake_data, null, function(parseErr) {
+                if(parseErr) { return accept('Error parsing cookies.', false); }
 
                 // Get the SID cookie
+                //console.log(handshake_data);
                 var sid_cookie = (handshake_data.secureCookies && handshake_data.secureCookies[EXPRESS_SID_KEY]) ||
                                 (handshake_data.signedCookies && handshake_data.signedCookies[EXPRESS_SID_KEY]) ||
                                 (handshake_data.cookies && handshake_data.cookies[EXPRESS_SID_KEY]);
-                // local test: parse from signedCookies
+                // console.log(sid_cookie);
 
                 // TODO: check session authority
                 // // Then we just need to load the session from the Express Session Store
                 // sessionStore.load(sid_cookie, function(err, session) {
                 //     // And last, we check if the used has a valid session and if he is logged in
                 //     if (err || !session || session.isLogged !== true) {
-                //         callback('Not logged in.', false);
+                //         accept('Not logged in.', false);
                 //     } else {
                 //         // If you want, you can attach the session to the handshake handshake_data, so you can use it again later
                 //         handshake_data.session = session;
 
-                //         callback(null, true);
+                //         accept(null, true);
                 //     }
                 // });
                 if (sid_cookie === undefined){
-                    console.log("Same value failed!!");
-                    return callback('Cookie is invalid.', false);
+                    console.log("Some value failed!!");
+                    return accept('Cookie is invalid.', false);
                 }
                 else {
                     handshake_data.session_id = sid_cookie;
-                    callback(null, true);
+                    accept(null, true);
                 }
             });
         });
     };
 
     this.onSocketConnected = function(socket) {
-        //transform session id, saved in tses_uuid_map
-        //var tses_id = socket.handshake.cookie['express.sid'].replace(/[^\w\s]/gi, '_');
-        var tses_id = socket.handshake.session_id.replace(/[^\w\s]/gi, '_');
-        var player_id = "";
+        // var tses_id = socket.handshake.session_id.replace(/[^\w\s]/gi, '_');
+        var ses_id = socket.handshake.session_id;
 
-        //create client uuid db here
-        if (!tses_uuid_map.contains(tses_id)) {
-            console.log("!!! New Session Connected!!");
-            console.log("--- " + tses_id + " ---");
-            socket.tses_id = tses_id;
-
-            player_id = UUID();
-            tses_uuid_map.add(tses_id, player_id);
-
-            console.log("Create client uuid db!!");
-            console.log(player_id);
+        if (ses_nick_map.contains(ses_id)) {
+            socket.nick_name = ses_nick_map.get(ses_id).value;
         }
+
         else {
-            player_id = tses_uuid_map.get(tses_id).value;
+            // Todo: add more player
+            if (ses_nick_map.count() >= 2) {
+                console.log("more than two player! Disconnect!");
+                socket.disconnect();
+                return;
+            }
+
+            else {
+                console.log("!!! New Session Connected!!");
+                console.log("--- " + ses_id + " ---");
+
+                if (0===ses_nick_map.count()) {
+                    socket.nick_name = "lower";
+                }
+                else if (1===ses_nick_map.count()) {
+                    socket.nick_name = "upper";
+                }
+                else {
+                    console.log("Should not happen!");
+                }
+
+                // player_id = UUID();
+                ses_nick_map.add(ses_id, socket.nick_name);
+                console.log(ses_nick_map.count());
+                console.log(ses_nick_map.get(ses_id).value);
+            }
         }
 
         socket.on('ask first draw cards', function () {
-            console.log("AAA");
-            console.log(socket.tses_id);
-            self.testServerHi();
+            console.log(socket.nick_name);
         });
 
-        socket.emit('initial', {player_id: player_id});
+        socket.emit('initial', {nick_name: socket.nick_name});
         //Tmp
         socket.emit('game start');
 
-
-
     };
 
-    this.run = function() {
-        this.server.listen(GAME_PORT, GAME_HOST, null, function(){
+    this.listen = function() {
+        server.listen(GAME_PORT, GAME_HOST, null, function(){
             console.log('Express/SocketIO server on localhost :' + GAME_PORT);
         });
     };
@@ -168,18 +179,18 @@ function HBattleLineServer() {
     this.sendfirstDrawCardsID = function(player_id){
 
     };
-        cards_in_hand = [ card.card_id for card in self.card_mgr.firstDrawCardsInHand(data['channel_nickname']) ]
-        self.logger.debug( data['channel_nickname'] + " firstDrawCardsID: " + str(cards_in_hand) )
+        // cards_in_hand = [ card.card_id for card in self.card_mgr.firstDrawCardsInHand(data['channel_nickname']) ]
+        // self.logger.debug( data['channel_nickname'] + " firstDrawCardsID: " + str(cards_in_hand) )
 
-        [ player.Send({ "action": "firstDrawCardsID", "cards_in_hand": cards_in_hand })
-          for player in self.players if player.nickname == data['channel_nickname'] ]
+        // [ player.Send({ "action": "firstDrawCardsID", "cards_in_hand": cards_in_hand })
+        //   for player in self.players if player.nickname == data['channel_nickname'] ]
 
 
 }
 
 bb = new HBattleLineServer()
 bb.init();
-bb.run();
+bb.listen();
 
 
 // interval = setInterval(function () {
