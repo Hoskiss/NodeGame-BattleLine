@@ -147,22 +147,30 @@ function HBattleLineServer() {
                 }
                 else {
                     console.log("Should not happen!");
+                    return;
                 }
 
                 // player_id = UUID();
                 ses_nick_map.add(ses_id, socket.nick_name);
-                console.log(ses_nick_map.count());
                 console.log(ses_nick_map.get(ses_id).value);
+
+                socket.emit('initial', {nick_name: socket.nick_name});
+                if(2===ses_nick_map.count()) {
+                    io.sockets.emit('game start');
+                }
             }
         }
 
         socket.on('ask first draw cards', function () {
-            cards_mgr.firstDrawCardsInHand(socket.nick_name);
+            socket.emit('first draw cards ID',
+                        {cards_in_hand_id: cards_mgr.firstDrawCardsInHand(socket.nick_name)});
         });
 
-        socket.emit('initial', {nick_name: socket.nick_name});
-        //Tmp
-        socket.emit('game start');
+        socket.on('disconnect', function () {
+            console.log("!!! Disconnected!!");
+            console.log("--- " + ses_id + " ---");
+            ses_nick_map.remove(ses_id);
+        });
 
     };
 
@@ -171,21 +179,6 @@ function HBattleLineServer() {
             console.log('Express/SocketIO server on localhost :' + GAME_PORT);
         });
     };
-
-    //TMP
-    this.testServerHi = function() {
-        console.log("serverHI");
-    };
-
-    this.sendfirstDrawCardsID = function(player_id){
-
-    };
-        // cards_in_hand = [ card.card_id for card in self.card_mgr.firstDrawCardsInHand(data['channel_nickname']) ]
-        // self.logger.debug( data['channel_nickname'] + " firstDrawCardsID: " + str(cards_in_hand) )
-
-        // [ player.Send({ "action": "firstDrawCardsID", "cards_in_hand": cards_in_hand })
-        //   for player in self.players if player.nickname == data['channel_nickname'] ]
-
 
 }
 

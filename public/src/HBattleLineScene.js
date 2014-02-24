@@ -92,8 +92,8 @@ var BattleFieldLayer = cc.Layer.extend({
         // Tactics
         this.tactics_self_num_on_battle = 0;
         this.wildcard_used = false;
-        this.which_line_in_fog_environment = -1;
-        this.which_line_in_mud_environment = -1;
+        this.which_line_fog = -1;
+        this.which_line_mud = -1;
         // For render...should be more pretty
         this.middle_fog_tactics_card = undefined;
         this.middle_mud_tactics_card = undefined;
@@ -132,15 +132,20 @@ var BattleFieldLayer = cc.Layer.extend({
         socket.on('initial', function(data) {
             //gloabal
             //window.player_id = msg.player_id;
-            console.log("my player_id: " + data.player_id);
+            console.log("my player_id: " + data.nick_name);
         }.bind(this));
 
         socket.on('game start', function(data) {
+            console.log("Game start!!");
             socket.emit('ask first draw cards');
             socket.emit('ask init game state');
         }.bind(this));
 
-        //socket.emit('ask first draw cards');
+        socket.on('first draw cards ID', function(data) {
+            //gloabal
+            //window.player_id = msg.player_id;
+            console.log("my first draw cards ID: " + data.cards_in_hand_id);
+        }.bind(this));
         ////////////////
 
         for (var index = 0; index < BattleFieldLayer.RIVAL_BATTLE_LINE_POS.length; index++) {

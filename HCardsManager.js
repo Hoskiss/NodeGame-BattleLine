@@ -191,16 +191,20 @@ HCardsManager.prototype.firstDrawCardsInHand = function(which_player) {
         cards_in_which_hand = this.cards_in_hand_lower;
     }
     // client reconnect...
-    if (7 === cards_in_which_hand.length) {
-        return cards_in_which_hand;
+    if (7 !== cards_in_which_hand.length) {
+        for (var index=0; index < HCardsManager.NUM_CARDS_IN_HAND; index++) {
+            this.drawCard('soldier', which_player);
+        }
     }
-
-    for (var index=0; index < HCardsManager.NUM_CARDS_IN_HAND; index++) {
-        this.drawCard('soldier', which_player);
-    }
-
     // console.log(cards_in_which_hand);
-    return cards_in_which_hand;
+
+    // return id only (save transmit data size)
+    var cards_in_hand_id = [];
+        for (var index=0; index < cards_in_which_hand.length; index++) {
+            cards_in_hand_id.push(cards_in_which_hand[index].card_id);
+    }
+    console.log(cards_in_hand_id);
+    return cards_in_hand_id;
 };
 
 module.exports.Card = Card;
