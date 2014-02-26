@@ -25,7 +25,7 @@
  ****************************************************************************/
 
 var BattleFieldLayer = cc.Layer.extend({
-    isMouseDown:false,
+    isMouseDown:true,
     helloImg:null,
     helloLabel:null,
     circle:null,
@@ -34,6 +34,7 @@ var BattleFieldLayer = cc.Layer.extend({
     init: function() {
 
         this._super();
+
         // this.setTouchEnabled(true);
         this.setMouseEnabled(true);
 
@@ -71,6 +72,8 @@ var BattleFieldLayer = cc.Layer.extend({
         closeItem.setPosition(window_size.width - 20, 20);
         ////////////////
 
+        this.mouse_x = 0;
+        this.mouse_y = 0;
 
         // attributes
         this.cards_in_hand = [];
@@ -114,10 +117,9 @@ var BattleFieldLayer = cc.Layer.extend({
 
         // translucent_surface
         this.win_outcome_each_line = new Array(BattleFieldLayer.BATTLE_LINE_TOTAL_NUM);
-        // this.game_state = BattleFieldLayer.RIVAL_SHOULD_MOVE_STATE;
-        // tmp
-        this.game_state = BattleFieldLayer.SELF_SHOULD_MOVE_STATE;
+        this.game_state = BattleFieldLayer.RIVAL_SHOULD_MOVE_STATE;
 
+        this.is_anim_scheduled = false;
         //////////////////
 
 
@@ -135,7 +137,7 @@ var BattleFieldLayer = cc.Layer.extend({
         socket.on('initial', function(data) {
             //gloabal
             //window.player_id = msg.player_id;
-            console.log("my player_id: " + data.nick_name);
+            console.log("my player_id: " + data.nickname);
         }.bind(this));
 
         socket.on('game start', function(data) {
@@ -147,7 +149,6 @@ var BattleFieldLayer = cc.Layer.extend({
         socket.on('first draw cards ID', function(data) {
             //gloabal
             //window.player_id = msg.player_id;
-
             data.cards_in_hand_id.sort(HRenderCard.sortCardByID);
             // console.log(data.cards_in_hand_id);
 
@@ -159,58 +160,81 @@ var BattleFieldLayer = cc.Layer.extend({
                 this.addChild(hand_card);
             }
         }.bind(this));
-        ////////////////
 
-        //test_card.setScale(window_size.height/test_card.getContentSize().height);
+        socket.on('state change', function(data) {
+            this.game_state = data.game_state;
+        }.bind(this));
 
-        this.test_sprite = cc.Sprite.createWithSpriteFrameName("Blue_7.png");
-        this.test_sprite.setPosition(319, 325);
-        this.test_sprite.setScale(this.scale);
-        //this.test_sprite.setScale(3);
-        this.addChild(this.test_sprite);
+        // this.schedule(this.update);
+        // this.unschedule(this.update);
     },
 
-    sortCardByID: function(card_id_1, card_id_2){
 
 
-    },
+    // onTouchesEnded:function (pTouch, pEvent){
+    //     //console.log(pTouch[0].getLocation());
+    // },
+    // onTouchesMoved:function(pTouch, pEvent){
+    //     //this._jetSprite.handleTouchMove(pTouch[0].getLocation());
+    // },
 
     onMouseMoved: function(event){
-        if (this.game_state !== BattleFieldLayer.SELF_SHOULD_MOVE_STATE) {
-            return;
-        }
-        if (this.picking_card !== undefined) {
-            return;
-        }
-
         var location = event.getLocation();
-        for (var index = 0; index < this.cards_in_hand.length; index++) {
-            this.cards_in_hand[index].onMouseAnimation(
-                location.x, location.y,
-                BattleFieldLayer.HANDCARD_ANIMATION_UPPERBOUND,
-                BattleFieldLayer.HANDCARD_ANIMATION_LOWERBOUND,
-                BattleFieldLayer.ANIMATION_OFFSET);
-        }
+        this.mouse_x = location.x;
+        this.mouse_y = location.y;
+
+        this.checkCardsInHand();
     },
 
     onMouseDown: function(event) {
-
-
         var location = event.getLocation();
-
-        // left click event could triger pick/move(put)/draw
         this.checkPickUpCardInHand(location.x, location.y);
-        // self.checkMoveCardInHand(mouse_x, mouse_y)
-
-        // self.checkGenerateQueryBoxAfterTactics(mouse_x, mouse_y)
-        // self.checkConfirmTextBox(mouse_x, mouse_y)
-        // self.checkDrawCard(mouse_x, mouse_y)
     },
 
     onRightMouseDown: function(event) {
         console.log("EEEEEEEEEEEEE");
         console.log(event);
     },
+
+    onMouseUp:function (event) {
+        console.log("SSSSSS");
+    },
+
+    checkCardsInHand: function() {
+        if (this.game_state !== BattleFieldLayer.SELF_SHOULD_MOVE_STATE) {
+            this.unschedule(this.checkCardsInHandAnim);
+            this.is_anim_scheduled = false;
+            return;
+        }
+        if (this.picking_card !== undefined) {
+            this.unschedule(this.checkCardsInHandAnim);
+            this.is_anim_scheduled = false;
+            return;
+        }
+
+        if (!this.is_anim_scheduled) {
+            this.schedule(this.checkCardsInHandAnim);
+            this.is_anim_scheduled = true;
+        }
+    },
+
+    checkCardsInHandAnim: function() {
+        for (var index = 0; index < this.cards_in_hand.length; index++) {
+            var curr_pos = this.cards_in_hand[index].getPosition();
+
+            if (this.cards_in_hand[index].isTouch(this.mouse_x, this.mouse_y) &&
+                curr_pos.y < BattleFieldLayer.HANDCARD_ANIMATION_UPPERBOUND) {
+                this.cards_in_hand[index].setPosition(
+                    curr_pos.x, curr_pos.y+BattleFieldLayer.ANIMATION_OFFSET);
+            }
+            else if (!this.cards_in_hand[index].isTouch(this.mouse_x, this.mouse_y) &&
+                curr_pos.y > BattleFieldLayer.HANDCARD_ANIMATION_LOWERBOUND) {
+                this.cards_in_hand[index].setPosition(
+                    curr_pos.x, curr_pos.y-BattleFieldLayer.ANIMATION_OFFSET);
+            }
+        }
+    },
+
 
     countSelfTacticsNumOnBattle: function() {
         var count = 0
@@ -313,8 +337,8 @@ BattleFieldLayer.AIDE_CARD = HRenderCard("Aide",
                                          (1154, 745));
 
 // Animation
-BattleFieldLayer.HANDCARD_ANIMATION_UPPERBOUND = 715;
-BattleFieldLayer.HANDCARD_ANIMATION_LOWERBOUND = 745;
+BattleFieldLayer.HANDCARD_ANIMATION_UPPERBOUND = 103;
+BattleFieldLayer.HANDCARD_ANIMATION_LOWERBOUND = 80;
 BattleFieldLayer.ANIMATION_OFFSET = 3;
 BattleFieldLayer.ONE_FOURTH_CARD_HEIGHT = (HRenderCard.HEIGHT/4);
 

@@ -43,6 +43,7 @@ function HBattleLineServer() {
 
     this.init = function() {
         this.game_start = false;
+        this.player_count = 0;
 
         this.configureExpress();
         this.configureSocketIO();
@@ -128,53 +129,76 @@ function HBattleLineServer() {
         // var tses_id = socket.handshake.session_id.replace(/[^\w\s]/gi, '_');
         var ses_id = socket.handshake.session_id;
 
-        if (ses_nick_map.contains(ses_id)) {
-            socket.nick_name = ses_nick_map.get(ses_id).value;
+        if (self.player_count >= 2) {
+            console.log("more than two player! Disconnect!");
+            socket.disconnect();
+            return;
         }
 
+        if (ses_nick_map.contains(ses_id)) {
+            socket.nickname = ses_nick_map.get(ses_id).value;
+            winston.info("!!! Old Session Be Back !!!")
+            winston.info("--- " + ses_id + " ---")
+            winston.info("--- " + socket.nickname + " ---")
+            self.player_count += 1;
+            socket.emit('initial', {nickname: socket.nickname});
+        }
         else {
-            // Todo: add more player
-            if (ses_nick_map.count() >= 2) {
-                console.log("more than two player! Disconnect!");
-                socket.disconnect();
+            if (0===self.player_count) {
+                socket.nickname = "lower";
+            }
+            else if (1===self.player_count) {
+                socket.nickname = "upper";
+            }
+            else {
+                console.log("Should not happen!: " + self.player_count);
+                winston.info("Should not happen!: " + self.player_count);
                 return;
             }
 
-            else {
-                if (0===ses_nick_map.count()) {
-                    socket.nick_name = "lower";
-                }
-                else if (1===ses_nick_map.count()) {
-                    socket.nick_name = "upper";
-                }
-                else {
-                    console.log("Should not happen!");
-                    return;
-                }
+            winston.info("!!! New Session Connected !!!");
+            winston.info("--- " + ses_id + " ---");
+            winston.info("--- " + socket.nickname + " ---");
 
-                winston.info("!!! New Session Connected!!")
-                winston.info("--- " + ses_id + " ---")
-                winston.info("--- " + socket.nick_name + " ---")
+            // player_id = UUID();
+            ses_nick_map.add(ses_id, socket.nickname);
+            self.player_count += 1;
+            socket.emit('initial', {nickname: socket.nickname});
+        }
 
-                // player_id = UUID();
-                ses_nick_map.add(ses_id, socket.nick_name);
-
-                socket.emit('initial', {nick_name: socket.nick_name});
-                if(2===ses_nick_map.count()) {
-                    io.sockets.emit('game start');
-                }
-            }
+        if(2===self.player_count) {
+            io.sockets.emit('game start');
         }
 
         socket.on('ask first draw cards', function () {
             socket.emit('first draw cards ID',
-                        {cards_in_hand_id: cards_mgr.firstDrawCardsInHand(socket.nick_name)});
+                        {cards_in_hand_id: cards_mgr.firstDrawCardsInHand(socket.nickname)});
+        });
+
+        socket.on('ask init game state', function () {
+            var send_state = cards_mgr.state;
+
+            if ("lower" === socket.nickname) {
+                send_state = send_state.replace("LOWER", "SELF");
+                send_state = send_state.replace("UPPER", "RIVAL");
+                winston.info("--- " + socket.nickname + " ---");
+                winston.info("CHANGE STATE: " + send_state);
+            }
+            else {
+                send_state = send_state.replace("UPPER", "SELF");
+                send_state = send_state.replace("LOWER", "RIVAL");
+                winston.info("--- " + socket.nickname + " ---");
+                winston.info("CHANGE STATE: " + send_state);
+            }
+
+            socket.emit('state change', {game_state: send_state});
         });
 
         socket.on('disconnect', function () {
-            console.log("!!! Disconnected!!");
-            console.log("--- " + ses_id + " ---");
-            ses_nick_map.remove(ses_id);
+            winston.info("!!! Disconnected !!!");
+            winston.info("--- " + ses_id + " ---");
+            // ses_nick_map.remove(ses_id);
+            self.player_count -= 1;
         });
 
     };
