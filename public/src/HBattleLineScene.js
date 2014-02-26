@@ -25,7 +25,7 @@
  ****************************************************************************/
 
 var BattleFieldLayer = cc.Layer.extend({
-    isMouseDown: true,
+    isMouseDown: false,
     helloImg: null,
     helloLabel: null,
     circle: null,
@@ -131,11 +131,11 @@ var BattleFieldLayer = cc.Layer.extend({
         this.query_color_selector_box = undefined;
         this.query_number_selector_box = undefined;
 
-        // translucent_surface
         this.win_outcome_each_line = new Array(BattleFieldLayer.BATTLE_LINE_TOTAL_NUM);
         this.game_state = BattleFieldLayer.RIVAL_SHOULD_MOVE_STATE;
 
         this.is_anim_scheduled = false;
+        this.translucent_card = undefined;
         //////////////////
 
 
@@ -181,7 +181,6 @@ var BattleFieldLayer = cc.Layer.extend({
             this.rival_picked_card.setScale(BattleFieldLayer.SCALE);
             this.rival_picked_card.setVisible(false);
             this.addChild(this.rival_picked_card, 0);
-
         }.bind(this));
 
         this.socket.on('update picked card pos', function(data) {
@@ -194,8 +193,6 @@ var BattleFieldLayer = cc.Layer.extend({
             this.game_state = data.game_state;
         }.bind(this));
 
-        // this.schedule(this.update);
-        // this.unschedule(this.update);
     },
 
 
@@ -214,6 +211,7 @@ var BattleFieldLayer = cc.Layer.extend({
 
         this.checkCardsInHand();
         this.updatePickedCardPos();
+        this.checkRenderTranslucentCard();
     },
 
     onMouseDown: function(event) {
@@ -261,43 +259,6 @@ var BattleFieldLayer = cc.Layer.extend({
                     curr_pos.x, curr_pos.y-BattleFieldLayer.ANIMATION_OFFSET);
             }
         }
-    },
-
-    updatePickedCardPos: function() {
-        if (this.picking_card !== undefined && this.picking_card.state == "PICKED") {
-            this.picking_card.setPosition(this.mouse_x, this.mouse_y);
-
-            var picking_card_pos = this.picking_card.getPosition();
-            this.sendOutPickedCardPos({x: picking_card_pos.x, y: picking_card_pos.y},
-                                      this.picking_card.state,
-                                      this.picking_card.isTacticsReArrange())
-        }
-        else {
-            return;
-        }
-    },
-
-    sendOutPickedCardPos: function(picking_pos, card_state, is_rearrange) {
-        this.socket.emit('update picked card pos', {
-            picking_pos: picking_pos,
-            card_state: card_state,
-            is_rearrange: is_rearrange
-        });
-    },
-
-    updateRivalPickedCardPos: function(picking_pos, card_state, is_rearrange) {
-        if (is_rearrange) {
-            this.rival_picked_card.setPosition(
-                BattleFieldLayer.WIDTH-picking_pos.x,
-                BattleFieldLayer.HEIGHT-picking_pos.y);
-        }
-        else {
-            this.rival_picked_card.setPosition(
-                picking_pos.x, BattleFieldLayer.HEIGHT-picking_pos.y);
-        }
-
-        this.rival_picked_card.setVisible(true);
-        this.rival_picked_card.state = card_state;
     },
 
     countSelfTacticsNumOnBattle: function() {
@@ -362,7 +323,8 @@ var BattleFieldLayer = cc.Layer.extend({
             }
 
             this.picking_card = this.cards_in_hand.splice(index, 1)[0];
-            this.picking_card.setPosition(mouse_x, mouse_y);
+            this.picking_card.setPosition(mouse_x,
+                                          mouse_y+BattleFieldLayer.ONE_FOURTH_CARD_HEIGHT);
             if ( this.picking_card.isTacticsReArrange() ) {
                 this.need_instruction_place = true;
             }
@@ -372,8 +334,142 @@ var BattleFieldLayer = cc.Layer.extend({
             // self.translucent_card = TranslucentCard(self.picking_card.card_id, (0, 0))
             // self.translucent_group.add(self.translucent_card)
         }
-    }
+    },
 
+    updatePickedCardPos: function() {
+        if (this.picking_card !== undefined && this.picking_card.state === "PICKED") {
+            this.picking_card.setPosition(this.mouse_x,
+                                          this.mouse_y+BattleFieldLayer.ONE_FOURTH_CARD_HEIGHT);
+
+            var picking_card_pos = this.picking_card.getPosition();
+            this.sendOutPickedCardPos({x: picking_card_pos.x, y: picking_card_pos.y},
+                                      this.picking_card.state,
+                                      this.picking_card.isTacticsReArrange())
+        }
+        else {
+            return;
+        }
+    },
+
+    sendOutPickedCardPos: function(picking_pos, card_state, is_rearrange) {
+        this.socket.emit('update picked card pos', {
+            picking_pos: picking_pos,
+            card_state: card_state,
+            is_rearrange: is_rearrange
+        });
+    },
+
+    updateRivalPickedCardPos: function(picking_pos, card_state, is_rearrange) {
+        if (is_rearrange) {
+            this.rival_picked_card.setPosition(
+                BattleFieldLayer.WIDTH-picking_pos.x,
+                BattleFieldLayer.HEIGHT-picking_pos.y);
+        }
+        else {
+            this.rival_picked_card.setPosition(
+                picking_pos.x, BattleFieldLayer.HEIGHT-picking_pos.y);
+        }
+
+        this.rival_picked_card.setVisible(true);
+        this.rival_picked_card.state = card_state;
+    },
+
+    isCurrentStateSelf: function() {
+        if (this.game_state.indexOf("SELF") !== -1) {
+            return true;
+        }
+        return false;
+    },
+
+    isMouseInRange: function(center_pos, lower_bound, upper_bound) {
+        lower_bound = (typeof lower_bound === "undefined") ? 0 : lower_bound;
+        upper_bound = (typeof upper_bound === "undefined") ? 0 : upper_bound;
+        if ( this.mouse_x > center_pos[0]-HRenderCard.WIDTH/2 &&
+             this.mouse_x < center_pos[0]+HRenderCard.WIDTH/2 &&
+             this.mouse_y > center_pos[1]-HRenderCard.HEIGHT/2-lower_bound &&
+             this.mouse_y < center_pos[1]+HRenderCard.HEIGHT/2+upper_bound ) {
+            return true;
+        }
+        return false;
+    },
+
+    checkRenderTranslucentCard: function() {
+        if (!this.isCurrentStateSelf() || this.picking_card === undefined) {
+            return;
+        }
+
+        if (this.picking_card.isTacticsReArrange()) {
+            if (this.isMouseInRange(this.self_tactics_pos,
+                                    BattleFieldLayer.ONE_FOURTH_CARD_HEIGHT) ) {
+
+                if (undefined !== this.translucent_card) {
+                    if (this.translucent_card.getPosition().x ===
+                        this.self_tactics_pos[0]) {
+                        return;
+                    } else {
+                        this.removeChild(this.translucent_card, true);
+                        this.translucent_card = undefined;
+                    }
+                }
+
+                this.translucent_card = new HRenderCard(
+                    this.picking_card.card_id,
+                    this.self_tactics_pos,
+                    BattleFieldLayer.SCALE);
+                this.translucent_card.setOpacity(BattleFieldLayer.TRANSLUCENT_ALPHA);
+                this.addChild(this.translucent_card);
+                return;
+            }
+        } else if (this.picking_card.isTacticsEnvironment()) {
+            // TODO: beautiful effect
+            for (var index=0; index < BattleFieldLayer.MIDDLE_ENVIRONMENT_POS.length; index++) {
+                if (!this.isMouseInRange(BattleFieldLayer.MIDDLE_ENVIRONMENT_POS[index],
+                                         BattleFieldLayer.ONE_FOURTH_CARD_HEIGHT,
+                                         BattleFieldLayer.ONE_FOURTH_CARD_HEIGHT)) {
+                    continue;
+                }
+                if (undefined !== this.translucent_card) {
+                    return;
+                }
+
+                this.translucent_card = new HRenderCard(
+                    this.picking_card.card_id,
+                    BattleFieldLayer.MIDDLE_ENVIRONMENT_POS[index],
+                    BattleFieldLayer.SCALE);
+                this.translucent_card.setOpacity(BattleFieldLayer.TRANSLUCENT_ALPHA);
+                this.addChild(this.translucent_card);
+                return;
+            }
+        } else {
+            for (var index=0; index < BattleFieldLayer.SELF_BATTLE_LINE_POS.length; index++) {
+                if (!this.isMouseInRange(BattleFieldLayer.SELF_BATTLE_LINE_POS[index],
+                                         BattleFieldLayer.ONE_FOURTH_CARD_HEIGHT*3,
+                                         BattleFieldLayer.ONE_FOURTH_CARD_HEIGHT)) {
+                    continue;
+                }
+
+                if (undefined !== this.translucent_card) {
+                    if (this.translucent_card.getPosition().x ===
+                        BattleFieldLayer.SELF_BATTLE_LINE_POS[index][0]) {
+                        return;
+                    } else {
+                        this.removeChild(this.translucent_card, true);
+                        this.translucent_card = undefined;
+                    }
+                }
+                this.translucent_card = new HRenderCard(
+                    this.picking_card.card_id,
+                    BattleFieldLayer.SELF_BATTLE_LINE_POS[index],
+                    BattleFieldLayer.SCALE);
+                this.translucent_card.setOpacity(BattleFieldLayer.TRANSLUCENT_ALPHA);
+                this.addChild(this.translucent_card, 1);
+                return;
+            }
+        }
+
+        this.removeChild(this.translucent_card, true);
+        this.translucent_card = undefined;
+    }
 
 });
 
@@ -389,6 +485,9 @@ BattleFieldLayer.SELF_BATTLE_LINE_POS = [[213, 325], [319, 325], [426, 325],
 BattleFieldLayer.RIVAL_BATTLE_LINE_POS = [[213, 478], [319, 478], [426, 478],
                                           [532, 478], [639, 478], [746, 478],
                                           [852, 478], [958, 478], [1065, 478]];
+BattleFieldLayer.MIDDLE_ENVIRONMENT_POS = [[213, 400], [319, 400], [426, 400],
+                                          [532, 400], [639, 400], [746, 400],
+                                          [852, 400], [958, 400], [1065, 400]];
 
 // Animation
 BattleFieldLayer.HANDCARD_ANIMATION_UPPERBOUND = 103;
@@ -400,6 +499,8 @@ BattleFieldLayer.ONE_FOURTH_CARD_HEIGHT = (HRenderCard.HEIGHT/4);
 BattleFieldLayer.FOCUS_EDGE_ORANGE = (250, 128, 10);
 BattleFieldLayer.INSTRUCTION_PLACE_BLUE = (0, 0, 250);
 BattleFieldLayer.FOCUS_EDGE_WIDTH = 3;
+
+BattleFieldLayer.TRANSLUCENT_ALPHA = 128;
 
 // For win-lose result
 BattleFieldLayer.MINIMUM_CARDS_NUM_FOR_CATEGARY = 3;
