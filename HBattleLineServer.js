@@ -194,6 +194,11 @@ function HBattleLineServer() {
             socket.emit('state change', {game_state: send_state});
         });
 
+        socket.on('update picked card pos', function (data) {
+            // console.log(data);
+            socket.broadcast.emit('update picked card pos', data);
+        });
+
         socket.on('disconnect', function () {
             winston.info("!!! Disconnected !!!");
             winston.info("--- " + ses_id + " ---");

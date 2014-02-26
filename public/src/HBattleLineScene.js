@@ -25,11 +25,11 @@
  ****************************************************************************/
 
 var BattleFieldLayer = cc.Layer.extend({
-    isMouseDown:true,
-    helloImg:null,
-    helloLabel:null,
-    circle:null,
-    sprite:null,
+    isMouseDown: true,
+    helloImg: null,
+    helloLabel: null,
+    circle: null,
+    sprite: null,
 
     init: function() {
 
@@ -38,17 +38,33 @@ var BattleFieldLayer = cc.Layer.extend({
         // this.setTouchEnabled(true);
         this.setMouseEnabled(true);
 
-        // add Background Map
         var window_size = cc.Director.getInstance().getWinSize();
+        BattleFieldLayer.WIDTH = window_size.width;
+        BattleFieldLayer.HEIGHT = window_size.height;
+
+        // add Background Map
         var background_sprite = cc.Sprite.create(s_BackgroundMap);
-        background_sprite.setPosition(window_size.width / 2, window_size.height / 2);
-        // total scale based on background scale
-        this.scale = (window_size.height)/(background_sprite.getContentSize().height);
-        background_sprite.setScale(this.scale);
+        background_sprite.setPosition(BattleFieldLayer.WIDTH/2, BattleFieldLayer.HEIGHT/2);
+
+        BattleFieldLayer.SCALE = (BattleFieldLayer.HEIGHT)/(background_sprite.getContentSize().height);
+        background_sprite.setScale(BattleFieldLayer.SCALE);
         this.addChild(background_sprite, 0);
 
+        // add static cards
+        var soldier_back_sprite = cc.Sprite.create(s_SoldierBack);
+        soldier_back_sprite.setPosition(1176, 478);
+        soldier_back_sprite.setScale(BattleFieldLayer.SCALE);
+        this.addChild(soldier_back_sprite, 0);
 
-        //////
+        var tactics_back_sprite = cc.Sprite.create(s_TacticsBack);
+        tactics_back_sprite.setPosition(105, 325);
+        tactics_back_sprite.setScale(BattleFieldLayer.SCALE);
+        this.addChild(tactics_back_sprite, 0);
+
+        // var aide_sprite = cc.Sprite.create(s_Aide);
+        // aide_sprite.setPosition(105, 325);
+        // aide_sprite.setScale(BattleFieldLayer.SCALE);
+        // this.addChild(aide_sprite, 0);
 
         ////////////////
         //tmp
@@ -58,18 +74,18 @@ var BattleFieldLayer = cc.Layer.extend({
 
 
         // add a "close" icon to exit the progress. it's an autorelease object
-        var closeItem = cc.MenuItemImage.create(
-            s_CloseNormal,
-            s_CloseSelected,
-            function () {
-                cc.log("close");
-            },this);
-        closeItem.setAnchorPoint(0.5, 0.5);
+        // var closeItem = cc.MenuItemImage.create(
+        //     s_CloseNormal,
+        //     s_CloseSelected,
+        //     function () {
+        //         cc.log("close");
+        //     },this);
+        // closeItem.setAnchorPoint(0.5, 0.5);
 
-        var menu = cc.Menu.create(closeItem);
-        menu.setPosition(0, 0);
-        this.addChild(menu, 1);
-        closeItem.setPosition(window_size.width - 20, 20);
+        // var menu = cc.Menu.create(closeItem);
+        // menu.setPosition(0, 0);
+        // this.addChild(menu, 1);
+        // closeItem.setPosition(window_size.width - 20, 20);
         ////////////////
 
         this.mouse_x = 0;
@@ -87,7 +103,7 @@ var BattleFieldLayer = cc.Layer.extend({
         }
 
         this.picking_card = undefined;
-        this.rival_picked_card = HRenderCard(this.SOLDIER_BACK_NAME);
+        this.rival_picked_card = undefined;
 
         // only tactics re-rearrange kind would in these list (not in each line)
         this.cards_self_tactics = [];
@@ -127,41 +143,54 @@ var BattleFieldLayer = cc.Layer.extend({
         // SOCKET IO CALLBACK
         var server_host = document.domain;
         var game_port = document.location.port;
-        var socket = io.connect(server_host,
+
+        this.socket = io.connect(server_host,
                                  {port: game_port, transports: ["websocket"]});
 
-        socket.on('connect', function() {
+        this.socket.on('connect', function() {
             console.log('connected!');
         }.bind(this));
 
-        socket.on('initial', function(data) {
+        this.socket.on('initial', function(data) {
             //gloabal
             //window.player_id = msg.player_id;
             console.log("my player_id: " + data.nickname);
         }.bind(this));
 
-        socket.on('game start', function(data) {
+        this.socket.on('game start', function(data) {
             console.log("Game start!!");
-            socket.emit('ask first draw cards');
-            socket.emit('ask init game state');
+            this.socket.emit('ask first draw cards');
+            this.socket.emit('ask init game state');
         }.bind(this));
 
-        socket.on('first draw cards ID', function(data) {
+        this.socket.on('first draw cards ID', function(data) {
             //gloabal
             //window.player_id = msg.player_id;
             data.cards_in_hand_id.sort(HRenderCard.sortCardByID);
             // console.log(data.cards_in_hand_id);
-
             for (var index = 0; index < data.cards_in_hand_id.length; index++) {
                 var hand_card = new HRenderCard(data.cards_in_hand_id[index]+".png",
                                                 BattleFieldLayer.SELF_IN_HAND_POS[index+1],
-                                                this.scale);
+                                                BattleFieldLayer.SCALE);
                 this.cards_in_hand.push(hand_card);
                 this.addChild(hand_card);
             }
+
+            this.rival_picked_card = cc.Sprite.create(s_SoldierBack);
+            this.rival_picked_card.setPosition(784, 735);
+            this.rival_picked_card.setScale(BattleFieldLayer.SCALE);
+            this.rival_picked_card.setVisible(false);
+            this.addChild(this.rival_picked_card, 0);
+
         }.bind(this));
 
-        socket.on('state change', function(data) {
+        this.socket.on('update picked card pos', function(data) {
+            this.updateRivalPickedCardPos(data.picking_pos,
+                                          data.card_state,
+                                          data.is_rearrange);
+        }.bind(this));
+
+        this.socket.on('state change', function(data) {
             this.game_state = data.game_state;
         }.bind(this));
 
@@ -184,6 +213,7 @@ var BattleFieldLayer = cc.Layer.extend({
         this.mouse_y = location.y;
 
         this.checkCardsInHand();
+        this.updatePickedCardPos();
     },
 
     onMouseDown: function(event) {
@@ -201,14 +231,12 @@ var BattleFieldLayer = cc.Layer.extend({
     },
 
     checkCardsInHand: function() {
-        if (this.game_state !== BattleFieldLayer.SELF_SHOULD_MOVE_STATE) {
-            this.unschedule(this.checkCardsInHandAnim);
-            this.is_anim_scheduled = false;
-            return;
-        }
-        if (this.picking_card !== undefined) {
-            this.unschedule(this.checkCardsInHandAnim);
-            this.is_anim_scheduled = false;
+        if (this.game_state !== BattleFieldLayer.SELF_SHOULD_MOVE_STATE ||
+            this.picking_card !== undefined) {
+            if (this.is_anim_scheduled) {
+                this.unschedule(this.checkCardsInHandAnim);
+                this.is_anim_scheduled = false;
+            }
             return;
         }
 
@@ -235,6 +263,42 @@ var BattleFieldLayer = cc.Layer.extend({
         }
     },
 
+    updatePickedCardPos: function() {
+        if (this.picking_card !== undefined && this.picking_card.state == "PICKED") {
+            this.picking_card.setPosition(this.mouse_x, this.mouse_y);
+
+            var picking_card_pos = this.picking_card.getPosition();
+            this.sendOutPickedCardPos({x: picking_card_pos.x, y: picking_card_pos.y},
+                                      this.picking_card.state,
+                                      this.picking_card.isTacticsReArrange())
+        }
+        else {
+            return;
+        }
+    },
+
+    sendOutPickedCardPos: function(picking_pos, card_state, is_rearrange) {
+        this.socket.emit('update picked card pos', {
+            picking_pos: picking_pos,
+            card_state: card_state,
+            is_rearrange: is_rearrange
+        });
+    },
+
+    updateRivalPickedCardPos: function(picking_pos, card_state, is_rearrange) {
+        if (is_rearrange) {
+            this.rival_picked_card.setPosition(
+                BattleFieldLayer.WIDTH-picking_pos.x,
+                BattleFieldLayer.HEIGHT-picking_pos.y);
+        }
+        else {
+            this.rival_picked_card.setPosition(
+                picking_pos.x, BattleFieldLayer.HEIGHT-picking_pos.y);
+        }
+
+        this.rival_picked_card.setVisible(true);
+        this.rival_picked_card.state = card_state;
+    },
 
     countSelfTacticsNumOnBattle: function() {
         var count = 0
@@ -292,11 +356,13 @@ var BattleFieldLayer = cc.Layer.extend({
             }
 
             this.cards_in_hand[index].state = "PICKED";
-            this.picking_card = this.cards_in_hand[index];
-            // assign undefined to this elem in array
-            delete this.cards_in_hand[index];
-            console.log(this.picking_card.card_id);
+            if (this.is_anim_scheduled) {
+                this.unschedule(this.checkCardsInHandAnim);
+                this.is_anim_scheduled = false;
+            }
 
+            this.picking_card = this.cards_in_hand.splice(index, 1)[0];
+            this.picking_card.setPosition(mouse_x, mouse_y);
             if ( this.picking_card.isTacticsReArrange() ) {
                 this.need_instruction_place = true;
             }
@@ -306,8 +372,6 @@ var BattleFieldLayer = cc.Layer.extend({
             // self.translucent_card = TranslucentCard(self.picking_card.card_id, (0, 0))
             // self.translucent_group.add(self.translucent_card)
         }
-
-
     }
 
 
@@ -325,16 +389,6 @@ BattleFieldLayer.SELF_BATTLE_LINE_POS = [[213, 325], [319, 325], [426, 325],
 BattleFieldLayer.RIVAL_BATTLE_LINE_POS = [[213, 478], [319, 478], [426, 478],
                                           [532, 478], [639, 478], [746, 478],
                                           [852, 478], [958, 478], [1065, 478]];
-
-// Static card
-BattleFieldLayer.SOLDIER_BACK = HRenderCard("Soldier_Back",
-                                            (1275, 293));
-
-BattleFieldLayer.TACTICS_BACK = HRenderCard("Tactics_Back",
-                                            (70, 465));
-
-BattleFieldLayer.AIDE_CARD = HRenderCard("Aide",
-                                         (1154, 745));
 
 // Animation
 BattleFieldLayer.HANDCARD_ANIMATION_UPPERBOUND = 103;
@@ -371,7 +425,7 @@ var HBattleLineScene = cc.Scene.extend({
         this._super();
 
         var spriteFrameCache = cc.SpriteFrameCache.getInstance();
-        spriteFrameCache.addSpriteFrames("HBL-Cards.plist", "HBL-Cards.png");
+        spriteFrameCache.addSpriteFrames(s_CardsPlist, s_Cards);
 
         var layer = new BattleFieldLayer();
         this.addChild(layer);
