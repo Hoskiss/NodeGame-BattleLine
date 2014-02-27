@@ -126,3 +126,28 @@ HRenderCard.sortCardByID = function(card_id_1, card_id_2) {
         }
     }
 };
+
+HRenderCard.sortCard = function(card_1, card_2) {
+    var card_id_1 = card_1.card_id;
+    var card_id_2 = card_2.card_id;
+    // both tactics card
+    if (card_id_1.indexOf("Tactics") !== -1 &&
+        card_id_2.indexOf("Tactics") !== -1) {
+        return card_id_1>card_id_2;
+    }
+
+    else {
+        var type_1 = card_id_1.match(/^[a-z]+/i)[0];
+        var type_2 = card_id_2.match(/^[a-z]+/i)[0];
+        var order_1 = HRenderCard.CARD_ORDER.indexOf(type_1);
+        var order_2 = HRenderCard.CARD_ORDER.indexOf(type_2);
+        if (order_1 !== order_2) {
+            return order_1>order_2;
+        }
+        else {
+            var num_1 = card_id_1.match(/[0-9]+/i)[0];
+            var num_2 = card_id_2.match(/[0-9]+/i)[0];
+            return num_1>num_2;
+        }
+    }
+};
