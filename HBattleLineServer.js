@@ -194,12 +194,16 @@ function HBattleLineServer() {
             socket.emit('state change', {game_state: send_state});
         });
 
-        socket.on('update picked card pos', function (data) {
+        socket.on('picked card', function(data) {
+            socket.broadcast.emit('picked card', data);
+        });
+
+        socket.on('update picked card pos', function(data) {
             // console.log(data);
             socket.broadcast.emit('update picked card pos', data);
         });
 
-        socket.on('disconnect', function () {
+        socket.on('disconnect', function() {
             winston.info("!!! Disconnected !!!");
             winston.info("--- " + ses_id + " ---");
             // ses_nick_map.remove(ses_id);

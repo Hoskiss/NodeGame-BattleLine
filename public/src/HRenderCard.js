@@ -103,6 +103,11 @@ HRenderCard.HEIGHT = 116;
 HRenderCard.CARD_ORDER = ['Red', 'Orange', 'Yellow',
                           'Green', 'Blue', 'Purple', 'Tactics']
 
+HRenderCard.LAZY_STATE = "LAZY";
+HRenderCard.PICKED_STATE = "PICKED";
+HRenderCard.RELEASING_STATE = "RELEASING";
+HRenderCard.SELECTING_STATE = "SELECTING";
+
 
 HRenderCard.sortCardByID = function(card_id_1, card_id_2) {
     // both tactics card
