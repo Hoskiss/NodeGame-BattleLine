@@ -182,7 +182,6 @@ var BattleFieldLayer = cc.Layer.extend({
             //gloabal
             //window.player_id = msg.player_id;
             data.cards_in_hand_id.sort(HRenderCard.sortCardByID);
-            // console.log(data.cards_in_hand_id);
             for (var index=0; index < data.cards_in_hand_id.length; index++) {
                 var hand_card = new HRenderCard(data.cards_in_hand_id[index],
                                                 BattleFieldLayer.SELF_IN_HAND_POS[index+1],
@@ -345,6 +344,7 @@ var BattleFieldLayer = cc.Layer.extend({
         this.mouse_y = location.y;
         this.checkPickUpCardInHand(location.x, location.y);
         this.checkMoveCardInHand();
+        this.checkDrawCard();
     },
 
     onRightMouseDown: function(event) {
@@ -569,6 +569,20 @@ var BattleFieldLayer = cc.Layer.extend({
         delete this.picking_card;
         this.need_instruction_place = false;
         delete this.translucent_card;
+    },
+
+    // onMouseDown event
+    checkDrawCard: function(mouse_x, mouse_y) {
+        // consider special case for scout tactics
+        if( (this.game_state === BattleFieldLayer.SELF_MOVE_AFTER_TACTICS_STATE &&
+             this.scout_draw_card_count != 0) ||
+             this.game_state === BattleFieldLayer.SELF_MOVE_DONE_STATE) {
+            if (this.isMouseInRange(BattleFieldLayer.SOLDIER_BACK_POS)) {
+                this.askForDrawCard('soldier');
+            } else if (this.isMouseInRange(BattleFieldLayer.TACTICS_BACK_POS)) {
+                this.askForDrawCard('tactics');
+            }
+        }
     },
 
     // onRightMouseDown event
@@ -1054,26 +1068,13 @@ var BattleFieldLayer = cc.Layer.extend({
     //     elif this.query_text_box.ifMouseInNoRange(mouse_x, mouse_y):
     //         this.query_text_box = None
 
-    // def checkDrawCard(this, mouse_x, mouse_y):
-    //     // consider special case for scout tactics
-    //     if( (this.game_state == BattleFieldLayer.SELF_MOVE_AFTER_TACTICS_STATE and
-    //          this.scout_draw_card_count != 0) or
-    //          this.game_state == BattleFieldLayer.SELF_MOVE_DONE_STATE):
-
-    //         if BattleFieldLayer.SOLDIER_BACK.ifMouseTouch(mouse_x, mouse_y):
-    //             this.askForDrawCard(card_type='soldier')
-    //         elif BattleFieldLayer.TACTICS_BACK.ifMouseTouch(mouse_x, mouse_y):
-    //             this.askForDrawCard(card_type='tactics')
-    //         else:
-    //             return
-    //     else:
-    //             return
-
     //  Func send out game_state change
     getDrawCard: function(draw_card_id) {
         var draw_card = new HRenderCard(draw_card_id,
                                         [0, 0],
                                         BattleFieldLayer.SCALE);
+        this.cards_in_hand.push(draw_card);
+        console.log(this.cards_in_hand);
         if (BattleFieldLayer.SELF_MOVE_DONE_STATE === this.game_state) {
             this.resetCardsInHandPos();
             this.game_state = BattleFieldLayer.RIVAL_SHOULD_MOVE_STATE;
@@ -1094,6 +1095,7 @@ var BattleFieldLayer = cc.Layer.extend({
             this.scout_draw_card_count -= 1;
             this.game_state = BattleFieldLayer.SELF_MOVE_AFTER_TACTICS_STATE;
         }
+        this.addChild(draw_card);
     },
 
     // execute action(function) if mouse touch a range of a range array
@@ -1102,7 +1104,6 @@ var BattleFieldLayer = cc.Layer.extend({
         upper_bound = (typeof upper_bound === "undefined") ? 0 : upper_bound;
 
         for (var index = range_array.length-1; index >= 0; index--) {
-            // console.log(range_array[index]);
             if (this.isMouseInRange(range_array[index],
                                     lower_bound,
                                     upper_bound)) {
@@ -1113,7 +1114,7 @@ var BattleFieldLayer = cc.Layer.extend({
         return false;
     },
 
-    // Action If MouseT ouch Range Function
+    // Action If Mouse Touch Range Function
     // =============================== //
     actionUpdateTranslucent: function(index, touch_range_x, touch_range_y) {
         self.translucent_card.setPosition(touch_range_x, touch_range_y);
@@ -1225,8 +1226,11 @@ var BattleFieldLayer = cc.Layer.extend({
         offset = (typeof offset === "undefined") ? 1 : offset;
 
         this.cards_in_hand.sort(HRenderCard.sortCard);
-        for (var index=0; index < data.cards_in_hand_id.length; index++) {
+        for (var index=0; index < this.cards_in_hand.length; index++) {
+            console.log(index);
+
             var reset_pos = BattleFieldLayer.SELF_IN_HAND_POS[index+offset];
+            console.log(reset_pos[0]);
             this.cards_in_hand[index].setPosition(reset_pos[0], reset_pos[1]);
             this.cards_in_hand[index].initial_pos = [reset_pos[0], reset_pos[1]];
             this.cards_in_hand[index].state = HRenderCard.LAZY_STATE;
@@ -1236,8 +1240,8 @@ var BattleFieldLayer = cc.Layer.extend({
     countSelfTacticsNumOnBattle: function() {
         var count = 0
         for (var line_index=0; line_index<this.cards_on_self_field.length; line_index++) {
-            for (var card_index=0; card_index<this.cacards_on_self_field[line_index].length; card_index++) {
-                if (this.cacards_on_self_field[line_index][card_index].isTactics()) {
+            for (var card_index=0; card_index<this.cards_on_self_field[line_index].length; card_index++) {
+                if (this.cards_on_self_field[line_index][card_index].isTactics()) {
                     count += 1;
                 }
             }

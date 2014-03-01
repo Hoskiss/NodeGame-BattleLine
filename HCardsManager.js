@@ -14,11 +14,10 @@ var Card = function(card_id) {
             // console.log(this.number);
         }
         else {
-            this.color = null;
-            this.number = null;
+            this.color = undefined;
+            this.number = undefined;
         }
     };
-
     this.init();
 }
 
@@ -26,7 +25,7 @@ Card.prototype = {
     isSoldierCard: function(card_id) {
         var COLOR_LIST = ['Red', 'Orange', 'Yellow',
                           'Green', 'Blue', 'Purple'];
-        return (COLOR_LIST.indexOf(card_id.match(/^[a-z]+/i)[0]));
+        return (-1 !== COLOR_LIST.indexOf(card_id.match(/^[a-z]+/i)[0]));
     }
 }
 
@@ -112,11 +111,11 @@ var HCardsManager = function() {
     }
     knuthShuffle(this.random_soldier_index);
 
-    this.random_tacticsr_index = new Array(HCardsManager.TACTICS_CARD_LIST.length);
-    for (var index=0; index < this.random_tacticsr_index.length; index++) {
-        this.random_tacticsr_index[index] = index;
+    this.random_tactics_index = new Array(HCardsManager.TACTICS_CARD_LIST.length);
+    for (var index=0; index < this.random_tactics_index.length; index++) {
+        this.random_tactics_index[index] = index;
     }
-    knuthShuffle(this.random_tacticsr_index);
+    knuthShuffle(this.random_tactics_index);
 
 }
 
@@ -153,11 +152,11 @@ HCardsManager.UPPER_MOVE_DONE_STATE = 'UPPER_MOVE_DONE_STATE';
 HCardsManager.GAME_OVER_STATE = 'GAME_OVER_STATE';
 
 // public methods
-HCardsManager.prototype.drawCard = function(card_type, which_player) {
+HCardsManager.prototype.drawCard = function(which_player, card_type) {
     if ('soldier' === card_type && 0 === this.random_soldier_index.length) {
         return undefined;
     }
-    if ('tactics' ===card_type && 0 === this.random_tacticsr_index.length) {
+    if ('tactics' ===card_type && 0 === this.random_tactics_index.length) {
         return undefined;
     }
 
@@ -169,7 +168,7 @@ HCardsManager.prototype.drawCard = function(card_type, which_player) {
         draw_card_id = HCardsManager.SOLDIER_CARD_LIST[draw_card_index];
     }
     else if ('tactics' === card_type) {
-        draw_card_index = this.random_tacticsr_index.pop();
+        draw_card_index = this.random_tactics_index.pop();
         draw_card_id = HCardsManager.TACTICS_CARD_LIST[draw_card_index];
     }
 
@@ -185,25 +184,25 @@ HCardsManager.prototype.drawCard = function(card_type, which_player) {
 
 HCardsManager.prototype.firstDrawCardsInHand = function(which_player) {
     // first draw 7 cards in hand
-    var cards_in_which_hand = undefined;
-
+    var cards_in_which_hand;
     if ('upper' === which_player) {
         cards_in_which_hand = this.cards_in_hand_upper;
     }
     else {
         cards_in_which_hand = this.cards_in_hand_lower;
     }
-    // client reconnect...
+
+    // TODO: client reconnect...
     if (7 !== cards_in_which_hand.length) {
         for (var index=0; index < HCardsManager.NUM_CARDS_IN_HAND; index++) {
-            this.drawCard('soldier', which_player);
+            this.drawCard(which_player, 'soldier');
         }
     }
 
     // return id only (save transmit data size)
     var cards_in_hand_id = [];
-        for (var index=0; index < cards_in_which_hand.length; index++) {
-            cards_in_hand_id.push(cards_in_which_hand[index].card_id);
+    for (var index=0; index < cards_in_which_hand.length; index++) {
+        cards_in_hand_id.push(cards_in_which_hand[index].card_id);
     }
 
     winston.info("player: " + which_player);
@@ -246,6 +245,7 @@ HCardsManager.prototype.setCardsOnBattle = function(which_player, add_or_remove,
         }
     }
 };
+
 
 module.exports.Card = Card;
 module.exports.CardCategory = CardCategory;

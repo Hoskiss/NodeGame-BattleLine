@@ -33,6 +33,8 @@ function HBattleLineServer() {
 
     // For socket callback
     var self = this;
+    var latest_existing_player = undefined;
+    var is_start_already = false;
     // var c_m = require('./HCardsManager');
     // c1 = new c_m.CardCategory([["aa", 1], ["aa", 2], ["aa", 90] ]);
     // c2 = new c_m.CardCategory([["bb", 10], ["bb", 20], ["bb", 90] ]);
@@ -58,6 +60,7 @@ function HBattleLineServer() {
             app.use(cookieParser);
             app.use(express.session({
                 store: sessionStore,
+                cookie: {maxAge: 24*60*60*1000},
                 key: EXPRESS_SID_KEY
             }));
 
@@ -137,9 +140,9 @@ function HBattleLineServer() {
         //console.log(ses_nick_map);
         if (ses_nick_map.contains(ses_id)) {
             socket.nickname = ses_nick_map.get(ses_id).value;
-            winston.info("!!! Old Session Be Back !!!")
-            winston.info("--- " + ses_id + " ---")
-            winston.info("--- " + socket.nickname + " ---")
+            winston.info("!!! Old Session Be Back !!!");
+            //winston.info("--- " + ses_id + " ---");
+            winston.info("--- " + socket.nickname + " ---");
             self.player_count += 1;
             socket.emit('initial', {nickname: socket.nickname});
         }
@@ -148,7 +151,11 @@ function HBattleLineServer() {
                 socket.nickname = "lower";
             }
             else if (1===self.player_count) {
-                socket.nickname = "upper";
+                if ("lower" === latest_existing_player) {
+                    socket.nickname = "upper";
+                } else {
+                    socket.nickname = "lower";
+                }
             }
             else {
                 console.log("Should not happen!: " + self.player_count);
@@ -156,6 +163,7 @@ function HBattleLineServer() {
                 return;
             }
 
+            latest_existing_player = socket.nickname;
             winston.info("!!! New Session Connected !!!");
             winston.info("--- " + ses_id + " ---");
             winston.info("--- " + socket.nickname + " ---");
@@ -167,7 +175,12 @@ function HBattleLineServer() {
         }
 
         if(2===self.player_count) {
-            io.sockets.emit('game start');
+            if (!is_start_already) {
+                io.sockets.emit('game start');
+                is_start_already = true;
+            } else {
+                socket.emit('game start');
+            }
         }
 
         socket.on('ask first draw cards', function () {
@@ -208,6 +221,25 @@ function HBattleLineServer() {
             cards_mgr.setCardsOnBattle(socket.nickname, data.add_or_remove,
                                        data.line_index, data.card_id)
             socket.broadcast.emit('update cards on self field', data);
+        });
+
+        socket.on('ask for draw card', function(data) {
+            var draw_card_id = cards_mgr.drawCard(socket.nickname,
+                                                  data.card_type);
+            winston.info(socket.nickname + ' Draw Card ID: ' + draw_card_id);
+
+            if (undefined !== draw_card_id) {
+                socket.emit('get draw card', {
+                    draw_card_id: draw_card_id
+                });
+            }
+        });
+
+        socket.on('update game state change', function(data) {
+            winston.info(socket.nickname + ' state change: ' + data.game_state);
+
+            var send_state = data.game_state.replace("RIVAL","SELF");
+            socket.broadcast.emit('state change', {game_state: send_state});
         });
 
         socket.on('disconnect', function() {
