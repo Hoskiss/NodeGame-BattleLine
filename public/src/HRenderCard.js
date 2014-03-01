@@ -13,7 +13,7 @@ var HRenderCard = cc.Sprite.extend({
     init: function(card_id, card_pos, scale, rotate, card_state) {
 
         this.card_id = card_id;
-        this.initWithSpriteFrameName(this.card_id);
+        this.initWithSpriteFrameName(this.card_id+".png");
 
         this.initial_pos = (typeof card_pos === "undefined") ?
                            [0, 0] : card_pos;
@@ -106,7 +106,7 @@ HRenderCard.CARD_ORDER = ['Red', 'Orange', 'Yellow',
 HRenderCard.LAZY_STATE = "LAZY";
 HRenderCard.PICKED_STATE = "PICKED";
 HRenderCard.RELEASING_STATE = "RELEASING";
-HRenderCard.SELECTING_STATE = "SELECTING";
+HRenderCard.RELEASING_STATE = "SELECTING";
 
 
 HRenderCard.sortCardByID = function(card_id_1, card_id_2) {

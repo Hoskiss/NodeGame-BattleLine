@@ -134,7 +134,7 @@ function HBattleLineServer() {
             socket.disconnect();
             return;
         }
-
+        //console.log(ses_nick_map);
         if (ses_nick_map.contains(ses_id)) {
             socket.nickname = ses_nick_map.get(ses_id).value;
             winston.info("!!! Old Session Be Back !!!")
@@ -194,13 +194,20 @@ function HBattleLineServer() {
             socket.emit('state change', {game_state: send_state});
         });
 
-        socket.on('picked card', function(data) {
-            socket.broadcast.emit('picked card', data);
+        socket.on('set picked card', function(data) {
+            socket.broadcast.emit('set picked card', data);
         });
 
         socket.on('update picked card pos', function(data) {
             // console.log(data);
             socket.broadcast.emit('update picked card pos', data);
+        });
+
+        socket.on('update cards on self field', function(data) {
+            // console.log(data);
+            cards_mgr.setCardsOnBattle(socket.nickname, data.add_or_remove,
+                                       data.line_index, data.card_id)
+            socket.broadcast.emit('update cards on self field', data);
         });
 
         socket.on('disconnect', function() {

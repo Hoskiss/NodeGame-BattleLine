@@ -211,6 +211,42 @@ HCardsManager.prototype.firstDrawCardsInHand = function(which_player) {
     return cards_in_hand_id;
 };
 
+HCardsManager.prototype.setCardsOnBattle = function(which_player, add_or_remove, line_index, card_id) {
+    if ("upper" === which_player) {
+        line_index = HCardsManager.BATTLE_LINE_TOTAL_NUM-line_index-1;
+    }
+    if ("Tactics_Fog"===card_id) {
+        this.which_line_fog = line_index;
+        return;
+    }
+    if ("Tactics_Mud"===card_id) {
+        this.which_line_mud = line_index;
+        return;
+    }
+
+    if ("lower"=== which_player) {
+        if ("add"===add_or_remove) {
+            this.cards_on_field_lower[line_index].push( new Card(card_id) );
+        } else {
+            for (var index=0; index < this.cards_on_field_lower[line_index].length; index++) {
+                if(this.cards_on_field_lower[line_index][index].card_id === card_id) {
+                    this.cards_on_field_lower[line_index].splice(index, 1);
+                }
+            }
+        }
+    } else {
+        if ("add"===add_or_remove) {
+            this.cards_on_field_upper[line_index].push( new Card(card_id) );
+        } else {
+            for (var index=0; index < this.cards_on_field_upper[line_index].length; index++) {
+                if(this.cards_on_field_upper[line_index][index].card_id === card_id) {
+                    this.cards_on_field_upper[line_index].splice(index, 1);
+                }
+            }
+        }
+    }
+};
+
 module.exports.Card = Card;
 module.exports.CardCategory = CardCategory;
 module.exports.HCardsManager = HCardsManager;
