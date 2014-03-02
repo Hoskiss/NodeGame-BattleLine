@@ -133,11 +133,13 @@ HCardsManager.SOLDIER_CARD_LIST = [
     'Purple_1', 'Purple_2', 'Purple_3', 'Purple_4', 'Purple_5',
     'Purple_6', 'Purple_7', 'Purple_8', 'Purple_9', 'Purple_10']
 
+// HCardsManager.TACTICS_CARD_LIST = [
+//    'Tactics_super8', 'Tactics_123', 'Tactics_Deserter',
+//    'Tactics_Fog', 'Tactics_King', 'Tactics_Mud',
+//    'Tactics_Queen', 'Tactics_Redeploy', 'Tactics_Scout',
+//    'Tactics_Traitor']
 HCardsManager.TACTICS_CARD_LIST = [
-   'Tactics_super8', 'Tactics_123', 'Tactics_Deserter',
-   'Tactics_Fog', 'Tactics_King', 'Tactics_Mud',
-   'Tactics_Queen', 'Tactics_Redeploy', 'Tactics_Scout',
-   'Tactics_Traitor']
+   'Tactics_King','Tactics_Queen']
 
 HCardsManager.NUM_CARDS_IN_HAND = 7
 HCardsManager.BATTLE_LINE_TOTAL_NUM = 9

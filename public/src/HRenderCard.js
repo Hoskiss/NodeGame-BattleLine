@@ -79,7 +79,7 @@ var HRenderCard = cc.Sprite.extend({
             return false;
         }
         if ( this.card_id.indexOf('Fog') !== -1 ||
-             this.card_id.indexOf('Mud') ) {
+             this.card_id.indexOf('Mud') !== -1 ) {
             return true;
         }
         return false;
