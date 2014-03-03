@@ -1,5 +1,15 @@
 
-var HColorSelector = cc.Sprite.extend({
+// var HQueryText = cc.Sprite.extend({
+
+//     ctor: function(query, size, pos) {
+//         this._super();
+
+//         this.query_text = cc.LabelTTF.create(query, "Monaco", size);
+//         this.query_text.setPosition(pos[0], pos[1]);
+//     }
+// });
+
+var HSelector = cc.Sprite.extend({
 
     ctor: function(src_file, pos, scale) {
         this._super();
@@ -7,6 +17,16 @@ var HColorSelector = cc.Sprite.extend({
         this.initWithFile(src_file);
         this.setPosition(pos[0], pos[1]);
         this.setScale(scale);
+
+        //this.tmpDrawDot();
+    },
+
+    tmpDrawDot: function() {
+        var curr_location = this.getPosition();
+        draw.drawDot( cc.p(curr_location.x, curr_location.y+30),
+                      10, cc.c4f(0, 0, 1, 1) );
+        draw.drawDot( cc.p(curr_location.x+90, curr_location.y-30),
+                      10, cc.c4f(0, 0, 1, 1) );
     },
 
     isDotInRange: function(mouse_pos, left_top, right_buttom) {
@@ -46,9 +66,27 @@ var HColorSelector = cc.Sprite.extend({
         } else {
             return undefined;
         }
-    }
+    },
+
+    tryGetYesNo: function(mouse_x, mouse_y) {
+        var curr_pos = this.getPosition();
+        if (this.isDotInRange([mouse_x, mouse_y],
+                              [curr_pos.x-90, curr_pos.y+30],
+                              [curr_pos.x, curr_pos.y-30])) {
+            return "Yes";
+        } else if (this.isDotInRange([mouse_x, mouse_y],
+                              [curr_pos.x, curr_pos.y+30],
+                              [curr_pos.x+90, curr_pos.y-30])) {
+            return "No";
+        } else {
+            return undefined;
+        }
+    },
 
 });
+
+
+
 
 
 // HColorSelector.prototype.tryGetWhichColor = function(mouse_y, mouse_y) {
