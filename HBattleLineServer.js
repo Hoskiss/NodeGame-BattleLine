@@ -203,7 +203,6 @@ function HBattleLineServer() {
                 winston.info("--- " + socket.nickname + " ---");
                 winston.info("CHANGE STATE: " + send_state);
             }
-
             socket.emit('state change', {game_state: send_state});
         });
 
@@ -216,11 +215,42 @@ function HBattleLineServer() {
             socket.broadcast.emit('update picked card pos', data);
         });
 
-        socket.on('update cards on self field', function(data) {
+        socket.on('update cards on self battle', function(data) {
             // console.log(data);
             cards_mgr.setCardsOnBattle(socket.nickname, data.add_or_remove,
                                        data.line_index, data.card_id)
-            socket.broadcast.emit('update cards on self field', data);
+            socket.broadcast.emit('update cards on self battle', data);
+        });
+
+        socket.on('update cards on rival battle', function(data) {
+            // console.log(data);
+            if ('lower' === socket.nickname) {
+                cards_mgr.setCardsOnBattle('upper', data.add_or_remove,
+                                           data.line_index, data.card_id);
+            } else {
+                cards_mgr.setCardsOnBattle('lower', data.add_or_remove,
+                                           data.line_index, data.card_id);
+            }
+
+            socket.broadcast.emit('update cards on rival battle', data);
+        });
+
+        socket.on('update cards on tactics', function(data) {
+            // console.log(data);
+            cards_mgr.setCardsOnTactics(socket.nickname, data.card_id)
+            socket.broadcast.emit('update cards on tactics', data);
+        });
+
+        socket.on('set card represent color num', function(data) {
+            // console.log(data);
+            cards_mgr.setCardRepresentColorNum(socket.nickname, data.card_id,
+                                               data.card_color, data.card_number)
+            io.sockets.emit('set card represent color num', data);
+        });
+
+        socket.on('return card to deck', function(data) {
+            // console.log(data);
+            cards_mgr.returnCardToDeck(data.card_id);
         });
 
         socket.on('ask for draw card', function(data) {
@@ -250,6 +280,14 @@ function HBattleLineServer() {
         });
 
     };
+
+    // def Network_askForCheckRemoveEachLineCategory(self, data):
+    //     data.update({"channel_nickname": self.nickname})
+    //     self._server.checkRemoveEachLineCategory(data)
+
+    // def Network_askForCheckIsGameOver(self, data):
+    //     data.update({"channel_nickname": self.nickname})
+    //     self._server.checkIsGameOver(data)
 
     this.listen = function() {
         server.listen(GAME_PORT, GAME_HOST, null, function(){

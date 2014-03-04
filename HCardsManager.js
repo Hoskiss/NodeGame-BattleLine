@@ -7,13 +7,13 @@ var Card = function(card_id) {
     this.card_id = card_id;
 
     this.init = function() {
-        if(this.isSoldierCard(this.card_id)) {
-            this.color = this.card_id.match(/^[a-z]+/i)[0];
 
+        //if(this.isSoldier(this.card_id))
+        if(-1 === this.card_id.indexOf('Tactics')) {
+            this.color = this.card_id.match(/^[a-z]+/i)[0];
             this.number = this.card_id.match(/[0-9]+/i)[0];
             // console.log(this.number);
-        }
-        else {
+        } else {
             this.color = undefined;
             this.number = undefined;
         }
@@ -22,11 +22,11 @@ var Card = function(card_id) {
 }
 
 Card.prototype = {
-    isSoldierCard: function(card_id) {
-        var COLOR_LIST = ['Red', 'Orange', 'Yellow',
-                          'Green', 'Blue', 'Purple'];
-        return (-1 !== COLOR_LIST.indexOf(card_id.match(/^[a-z]+/i)[0]));
-    }
+    // isSoldier: function(card_id) {
+    //     var COLOR_LIST = ['Red', 'Orange', 'Yellow',
+    //                       'Green', 'Blue', 'Purple'];
+    //     return (-1 !== COLOR_LIST.indexOf(card_id.match(/^[a-z]+/i)[0]));
+    // }
 }
 
 var CardCategory = function(line_cards_info, category) {
@@ -81,9 +81,9 @@ CardCategory.prototype = {
 var HCardsManager = function() {
 
     this.cards_in_hand_lower = [];
-    this.cards_on_field_lower = new Array(HCardsManager.BATTLE_LINE_TOTAL_NUM);
-    for (var index=0; index < this.cards_on_field_lower.length; index++) {
-        this.cards_on_field_lower[index] = new Array();
+    this.cards_on_battle_lower = new Array(HCardsManager.BATTLE_LINE_TOTAL_NUM);
+    for (var index=0; index < this.cards_on_battle_lower.length; index++) {
+        this.cards_on_battle_lower[index] = new Array();
     }
 
     this.cards_in_hand_upper = [];
@@ -227,11 +227,11 @@ HCardsManager.prototype.setCardsOnBattle = function(which_player, add_or_remove,
 
     if ("lower"=== which_player) {
         if ("add"===add_or_remove) {
-            this.cards_on_field_lower[line_index].push( new Card(card_id) );
+            this.cards_on_battle_lower[line_index].push( new Card(card_id) );
         } else {
-            for (var index=0; index < this.cards_on_field_lower[line_index].length; index++) {
-                if(this.cards_on_field_lower[line_index][index].card_id === card_id) {
-                    this.cards_on_field_lower[line_index].splice(index, 1);
+            for (var index=0; index < this.cards_on_battle_lower[line_index].length; index++) {
+                if(this.cards_on_battle_lower[line_index][index].card_id === card_id) {
+                    this.cards_on_battle_lower[line_index].splice(index, 1);
                 }
             }
         }
@@ -247,6 +247,45 @@ HCardsManager.prototype.setCardsOnBattle = function(which_player, add_or_remove,
         }
     }
 };
+
+HCardsManager.prototype.setCardsOnTactics = function(which_player, card_id) {
+    if ("lower" === which_player) {
+        this.lower_re_arrange_tactics.push( new Card(card_id) );
+    } else {
+        this.upper_re_arrange_tactics.push( new Card(card_id) );
+    }
+};
+
+HCardsManager.prototype.setCardRepresentColorNum = function(which_player, card_id, card_color, card_number) {
+    var which_battle_to_find;
+    if ("lower" === which_player) {
+        which_battle_to_find = this.cards_on_battle_lower;
+    } else {
+        which_battle_to_find = this.cards_on_battle_upper;
+    }
+
+    for (var line_index = which_battle_to_find.length-1; line_index >= 0; line_index--) {
+        for (var index = which_battle_to_find[line_index].length-1; index >= 0; index--) {
+            if(which_battle_to_find[line_index][index].card_id === card_id) {
+               which_battle_to_find[line_index][index].color = card_color;
+               which_battle_to_find[line_index][index].number = card_number;
+               winston.info("represent_card_id: " + which_battle_to_find[line_index][index].card_id);
+               winston.info("represent_card_color: " + which_battle_to_find[line_index][index].color);
+               winston.info("represent_card_number: " + which_battle_to_find[line_index][index].number);
+               return;
+            }
+        };
+    };
+};
+
+HCardsManager.prototype.returnCardToDeck = function(card_id) {
+    if(-1 !== card_id.indexOf('Tactics')) {
+        this.random_tactics_index.push(HCardsManager.TACTICS_CARD_LIST.indexOf(card_id));
+    } else {
+        this.random_soldier_index.push(HCardsManager.SOLDIER_CARD_LIST.indexOf(card_id));
+    }
+};
+
 
 
 module.exports.Card = Card;
