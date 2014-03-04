@@ -87,9 +87,9 @@ var HCardsManager = function() {
     }
 
     this.cards_in_hand_upper = [];
-    this.cards_on_field_upper = new Array(HCardsManager.BATTLE_LINE_TOTAL_NUM);
-    for (var index=0; index < this.cards_on_field_upper.length; index++) {
-        this.cards_on_field_upper[index] = new Array();
+    this.cards_on_battle_upper = new Array(HCardsManager.BATTLE_LINE_TOTAL_NUM);
+    for (var index=0; index < this.cards_on_battle_upper.length; index++) {
+        this.cards_on_battle_upper[index] = new Array();
     }
 
     // tactics;
@@ -139,7 +139,7 @@ HCardsManager.SOLDIER_CARD_LIST = [
 //    'Tactics_Queen', 'Tactics_Redeploy', 'Tactics_Scout',
 //    'Tactics_Traitor']
 HCardsManager.TACTICS_CARD_LIST = [
-   'Tactics_King','Tactics_Queen']
+   'Tactics_Queen', 'Tactics_King']
 
 HCardsManager.NUM_CARDS_IN_HAND = 7
 HCardsManager.BATTLE_LINE_TOTAL_NUM = 9
@@ -213,9 +213,6 @@ HCardsManager.prototype.firstDrawCardsInHand = function(which_player) {
 };
 
 HCardsManager.prototype.setCardsOnBattle = function(which_player, add_or_remove, line_index, card_id) {
-    if ("upper" === which_player) {
-        line_index = HCardsManager.BATTLE_LINE_TOTAL_NUM-line_index-1;
-    }
     if ("Tactics_Fog"===card_id) {
         this.which_line_fog = line_index;
         return;
@@ -237,11 +234,11 @@ HCardsManager.prototype.setCardsOnBattle = function(which_player, add_or_remove,
         }
     } else {
         if ("add"===add_or_remove) {
-            this.cards_on_field_upper[line_index].push( new Card(card_id) );
+            this.cards_on_battle_upper[line_index].push( new Card(card_id) );
         } else {
-            for (var index=0; index < this.cards_on_field_upper[line_index].length; index++) {
-                if(this.cards_on_field_upper[line_index][index].card_id === card_id) {
-                    this.cards_on_field_upper[line_index].splice(index, 1);
+            for (var index=0; index < this.cards_on_battle_upper[line_index].length; index++) {
+                if(this.cards_on_battle_upper[line_index][index].card_id === card_id) {
+                    this.cards_on_battle_upper[line_index].splice(index, 1);
                 }
             }
         }
@@ -256,7 +253,7 @@ HCardsManager.prototype.setCardsOnTactics = function(which_player, card_id) {
     }
 };
 
-HCardsManager.prototype.setCardRepresentColorNum = function(which_player, card_id, card_color, card_number) {
+HCardsManager.prototype.setCardRepresentColorNum = function(which_player, card_id, card_color, card_number, line_index) {
     var which_battle_to_find;
     if ("lower" === which_player) {
         which_battle_to_find = this.cards_on_battle_lower;
@@ -264,17 +261,15 @@ HCardsManager.prototype.setCardRepresentColorNum = function(which_player, card_i
         which_battle_to_find = this.cards_on_battle_upper;
     }
 
-    for (var line_index = which_battle_to_find.length-1; line_index >= 0; line_index--) {
-        for (var index = which_battle_to_find[line_index].length-1; index >= 0; index--) {
-            if(which_battle_to_find[line_index][index].card_id === card_id) {
-               which_battle_to_find[line_index][index].color = card_color;
-               which_battle_to_find[line_index][index].number = card_number;
-               winston.info("represent_card_id: " + which_battle_to_find[line_index][index].card_id);
-               winston.info("represent_card_color: " + which_battle_to_find[line_index][index].color);
-               winston.info("represent_card_number: " + which_battle_to_find[line_index][index].number);
-               return;
-            }
-        };
+    for (var index = which_battle_to_find[line_index].length-1; index >= 0; index--) {
+        if(which_battle_to_find[line_index][index].card_id === card_id) {
+           which_battle_to_find[line_index][index].color = card_color;
+           which_battle_to_find[line_index][index].number = card_number;
+           winston.info("represent_card_id: " + which_battle_to_find[line_index][index].card_id);
+           winston.info("represent_card_color: " + which_battle_to_find[line_index][index].color);
+           winston.info("represent_card_number: " + which_battle_to_find[line_index][index].number);
+           return;
+        }
     };
 };
 

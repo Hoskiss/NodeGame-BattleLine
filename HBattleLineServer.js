@@ -244,7 +244,7 @@ function HBattleLineServer() {
         socket.on('set card represent color num', function(data) {
             // console.log(data);
             cards_mgr.setCardRepresentColorNum(socket.nickname, data.card_id,
-                                               data.card_color, data.card_number)
+                                               data.card_color, data.card_number, data.line_index)
             io.sockets.emit('set card represent color num', data);
         });
 

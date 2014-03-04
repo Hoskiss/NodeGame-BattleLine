@@ -67,7 +67,7 @@ var BattleFieldLayer = cc.Layer.extend({
         BattleFieldLayer.INSTRUCTION_PLACE_BLUE = (0, 0, 250);
         BattleFieldLayer.FOCUS_EDGE_WIDTH = 3;
 
-        BattleFieldLayer.TRANSLUCENT_ALPHA = 128;
+        BattleFieldLayer.TRANSLUCENT_ALPHA = 160;
 
         // For win-lose result
         BattleFieldLayer.MINIMUM_CARDS_NUM_FOR_CATEGARY = 3;
@@ -197,6 +197,11 @@ var BattleFieldLayer = cc.Layer.extend({
 
         this.translucent_card = undefined;
         this.is_translucent_draw = false;
+        // translucent with tactics represent card
+        this.king_translucent_card = undefined;
+        this.queen_translucent_card = undefined;
+        this.super123_translucent_card = undefined;
+        this.super8_translucent_card = undefined;
 
         this.win_outcome_each_line = new Array(BattleFieldLayer.BATTLE_LINE_TOTAL_NUM);
         this.game_state = BattleFieldLayer.RIVAL_SHOULD_MOVE_STATE;
@@ -275,7 +280,7 @@ var BattleFieldLayer = cc.Layer.extend({
         }.bind(this));
 
         this.socket.on('set picked card', function(data) {
-            this.rival_picked_card.setPosition(BattleFieldLayer.WIDTH-data.picking_pos[0],
+            this.rival_picked_card.setPosition(data.picking_pos[0],
                                                BattleFieldLayer.HEIGHT-data.picking_pos[1]);
             this.rival_picked_card.state = data.card_state;
             if (data.card_state === HRenderCard.PICKED_STATE) {
@@ -286,21 +291,16 @@ var BattleFieldLayer = cc.Layer.extend({
         }.bind(this));
 
         this.socket.on('update picked card pos', function(data) {
-            this.rival_picked_card.setPosition(
-                BattleFieldLayer.WIDTH-data.picking_pos[0],
-                BattleFieldLayer.HEIGHT-data.picking_pos[1]);
+            this.rival_picked_card.setPosition(data.picking_pos[0],
+                                               BattleFieldLayer.HEIGHT-data.picking_pos[1]);
         }.bind(this));
 
         this.socket.on('update cards on self battle', function(data) {
-            this.updateRivalCardsOnField(data.add_or_remove,
-                                         data.line_index,
-                                         data.card_id);
+            this.updateRivalCardsOnField(data.add_or_remove, data.line_index, data.card_id);
         }.bind(this));
 
         this.socket.on('update cards on rival battle', function(data) {
-            this.updateSelfCardsOnField(data.add_or_remove,
-                                        data.line_index,
-                                        data.card_id);
+            this.updateSelfCardsOnField(data.add_or_remove, data.line_index, data.card_id);
         }.bind(this));
 
         this.socket.on('update cards on tactics', function(data) {
@@ -308,9 +308,8 @@ var BattleFieldLayer = cc.Layer.extend({
         }.bind(this));
 
         this.socket.on('set card represent color num', function(data) {
-            this.setCardRepresentColorNum(data.card_id,
-                                          data.card_color,
-                                          data.card_number);
+            this.setCardRepresentColorNum(data.card_id, data.card_color,
+                                          data.card_number, data.line_index);
         }.bind(this));
 
         this.socket.on('get draw card', function(data) {
@@ -363,11 +362,12 @@ var BattleFieldLayer = cc.Layer.extend({
         });
     },
 
-    sendOutCardRepresentColorNum: function(card_id, card_color, card_number) {
+    sendOutCardRepresentColorNum: function(card_id, card_color, card_number, line_index) {
         this.socket.emit('set card represent color num', {
             card_id: card_id,
             card_color: card_color,
-            card_number: card_number
+            card_number: card_number,
+            line_index: line_index
         });
     },
 
@@ -405,8 +405,6 @@ var BattleFieldLayer = cc.Layer.extend({
     // Receive Socket Function
     // ======================================= //
     updateRivalCardsOnField: function(add_or_remove, line_index, card_id) {
-        line_index = BattleFieldLayer.BATTLE_LINE_TOTAL_NUM-line_index-1;
-
         if (card_id.indexOf('Fog') !== -1) {
             this.which_line_fog = line_index;
             this.middle_fog_tactics_card = new HRenderCard(card_id,
@@ -474,29 +472,36 @@ var BattleFieldLayer = cc.Layer.extend({
         BattleFieldLayer.RIVAL_TACTICS_POS[1] -= BattleFieldLayer.ONE_FOURTH_CARD_HEIGHT;
     },
 
-    setCardRepresentColorNum: function(card_id, card_color, card_number) {
+    setCardRepresentColorNum: function(card_id, card_color, card_number, line_index) {
         var card_pos;
-        for (var index=0; index < this.cards_on_self_battle[index].length; index++) {
-            for (var line_index=0; line_index < this.cards_on_self_battle[index].length; line_index++) {
-                if ( this.cards_on_self_battle[index] === card_id ) {
-                    card_pos = this.cards_on_self_battle[index].getPosition();
-                }
+        for (var index=0; index < this.cards_on_self_battle[line_index].length; index++) {
+            if ( this.cards_on_self_battle[line_index][index].card_id === card_id ) {
+                card_pos = this.cards_on_self_battle[line_index][index].getPosition();
             }
         }
-        for (var index=0; index < this.cards_on_rival_battle[index].length; index++) {
-            for (var line_index=0; line_index < this.cards_on_rival_battle[index].length; line_index++) {
-                if ( this.cards_on_rival_battle[index] === card_id ) {
-                    card_pos = this.cards_on_rival_battle[index].getPosition();
-                }
+        for (var index=0; index < this.cards_on_rival_battle[line_index].length; index++) {
+            if ( this.cards_on_rival_battle[line_index][index].card_id === card_id ) {
+                card_pos = this.cards_on_rival_battle[line_index][index].getPosition();
             }
         }
         card_pos = [card_pos.x, card_pos.y];
 
-        delete this.translucent_card;
-        this.translucent_card = new HRenderCard(card_color + "_" + card_number,
-                                                card_pos,
-                                                BattleFieldLayer.SCALE);
-        this.addChild(this.translucent_card);
+        var draw_translucent;
+        if ( -1 !== card_id.indexOf("King") ) {
+            draw_translucent = this.king_translucent_card;
+        } else if ( -1 !== card_id.indexOf("Queen") ) {
+            draw_translucent = this.queen_translucent_card;
+        } else if ( -1 !== card_id.indexOf("123") ) {
+            draw_translucent = this.super123_translucent_card;
+        } else if ( -1 !== card_id.indexOf("8") ) {
+            draw_translucent = this.super8_translucent_card;
+        }
+
+        draw_translucent = new HRenderCard(card_color + "_" + card_number,
+                                           card_pos,
+                                           BattleFieldLayer.SCALE);
+        draw_translucent.setOpacity(BattleFieldLayer.TRANSLUCENT_ALPHA);
+        this.addChild(draw_translucent);
     },
 
     // Mouse Event Listener
@@ -946,7 +951,7 @@ var BattleFieldLayer = cc.Layer.extend({
            "SELECTING" === this.picking_card.state &&
            undefined === this.query_text) {
 
-            var tactics_name = self.latest_tactics_card.card_id.match(/_([a-z]+)/i)[1];
+            var tactics_name = self.latest_tactics_card.card_id.match(/_(\w+)/i)[1];
 
             if('Deserter' === tactics_name) {
                 this.genNewQuery('Do you want to discard this card ?');
@@ -1040,7 +1045,8 @@ var BattleFieldLayer = cc.Layer.extend({
                 this.latest_tactics_card.number = "8";
                 this.sendOutCardRepresentColorNum(this.latest_tactics_card.card_id,
                                                   this.latest_tactics_card.color,
-                                                  this.latest_tactics_card.number);
+                                                  this.latest_tactics_card.number,
+                                                  this.latest_tactics_card.line_index);
                 this.game_state = BattleFieldLayer.SELF_MOVE_DONE_STATE;
                 //this.askForCheckGameOver(this.latest_tactics_card.line_index);
                 //return;
@@ -1058,7 +1064,8 @@ var BattleFieldLayer = cc.Layer.extend({
 
             this.sendOutCardRepresentColorNum(this.latest_tactics_card.card_id,
                                               this.latest_tactics_card.color,
-                                              this.latest_tactics_card.number)
+                                              this.latest_tactics_card.number,
+                                              this.latest_tactics_card.line_index)
             this.game_state = BattleFieldLayer.SELF_MOVE_DONE_STATE;
             //this.askForCheckGameOver(this.latest_tactics_card.line_index);
         }
@@ -1147,7 +1154,9 @@ var BattleFieldLayer = cc.Layer.extend({
         if (BattleFieldLayer.SELF_MOVE_AFTER_TACTICS_STATE !== this.game_state) {
             return;
         }
-        var tactics_name = self.latest_tactics_card.card_id.match(/_([a-z]+)/i)[1];
+        console.log("AA");
+        console.log(self.latest_tactics_card.card_id);
+        var tactics_name = self.latest_tactics_card.card_id.match(/_(\w+)/i)[1];
         // for TacticsRepresent, here condition for overlap..
         if (this.latest_tactics_card.isTacticsRepresent()) {
             if (!this.checkConfirmColorSelector(mouse_x, mouse_y)) {
@@ -1227,7 +1236,7 @@ var BattleFieldLayer = cc.Layer.extend({
     actionPutTacticsReArrange: function(index, touch_range_x, touch_range_y) {
         // assign latest_tactics_card before change game_state to
         // BattleFieldLayer.SELF_MOVE_AFTER_TACTICS_STATE
-        var tactics_name = self.picking_card.card_id.match(/_([a-z]+)/i)[1];
+        var tactics_name = self.picking_card.card_id.match(/_(\w+)/i)[1];
         self.putDownPickingCardToOnePlace([touch_range_x, touch_range_y]);
         self.tactics_self_num_on_battle += 1;
         self.game_state = BattleFieldLayer.SELF_MOVE_AFTER_TACTICS_STATE;
