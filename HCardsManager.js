@@ -139,7 +139,7 @@ HCardsManager.SOLDIER_CARD_LIST = [
 //    'Tactics_Queen', 'Tactics_Redeploy', 'Tactics_Scout',
 //    'Tactics_Traitor']
 HCardsManager.TACTICS_CARD_LIST = [
-   'Tactics_Queen', 'Tactics_King']
+   'Tactics_Redeploy', 'Tactics_Deserter']
 
 HCardsManager.NUM_CARDS_IN_HAND = 7
 HCardsManager.BATTLE_LINE_TOTAL_NUM = 9

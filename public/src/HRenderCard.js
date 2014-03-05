@@ -106,7 +106,7 @@ HRenderCard.CARD_ORDER = ['Red', 'Orange', 'Yellow',
 HRenderCard.LAZY_STATE = "LAZY";
 HRenderCard.PICKED_STATE = "PICKED";
 HRenderCard.RELEASING_STATE = "RELEASING";
-HRenderCard.RELEASING_STATE = "SELECTING";
+// HRenderCard.SELECTING_STATE = "SELECTING";
 
 
 HRenderCard.sortCardByID = function(card_id_1, card_id_2) {
